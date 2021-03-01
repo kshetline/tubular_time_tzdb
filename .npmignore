@@ -1,0 +1,15 @@
+/.idea
+/coverage
+/src
+/tsconfig.json
+/.eslintrc.json
+/.eslintignore
+/docs
+/img
+/.nyc_output
+*.js.map
+*.spec.d.ts
+*.spec.js
+/webpack.config.cjs
+/make-remote-zone-data.ts
+*.tgz
