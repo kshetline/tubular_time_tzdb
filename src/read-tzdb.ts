@@ -19,7 +19,19 @@ function makeError(error: any): Error {
   return error instanceof Error ? error : new Error(error.toString());
 }
 
-async function getByUrl(url: string, requestedVersion?: string): Promise<TzData> {
+export async function getByUrlOrVersion(urlOrVersion?: string, displayProgress = false): Promise<TzData> {
+  let url: string;
+  let requestedVersion: string;
+
+  if (!urlOrVersion)
+    url = DEFAULT_URL;
+  else if (urlOrVersion.includes(':'))
+    url = urlOrVersion;
+  else {
+    requestedVersion = urlOrVersion;
+    url = URL_TEMPLATE_FOR_VERSION.replace('{version}', urlOrVersion);
+  }
+
   const extract = tar.extract();
   const data = await requestBinary(url, { headers: { 'User-Agent': 'curl/7.64.1' }, autoDecompress: true });
   const stream = Readable.from(data);
@@ -32,11 +44,18 @@ async function getByUrl(url: string, requestedVersion?: string): Promise<TzData>
     if (!error && TZ_SOURCE_FILES.has(sourceName) || sourceName === 'version') {
       let data = '';
 
+      if (displayProgress && sourceName !== 'version')
+        console.info(`Extracting ${sourceName}`);
+
       stream.on('data', chunk => data += chunk.toString());
       stream.on('error', err => error = err);
       stream.on('end', () => {
-        if (sourceName === 'version')
+        if (sourceName === 'version') {
           result.version = data.trim();
+
+          if (displayProgress && result.version)
+            console.info(`tz database version ${result.version}`);
+        }
         else
           result.sources[sourceName] = data;
 
@@ -45,6 +64,9 @@ async function getByUrl(url: string, requestedVersion?: string): Promise<TzData>
     }
     else
       stream.on('end', next);
+
+    if (displayProgress && !result.version)
+      console.info('unknown tz database version');
 
     stream.resume();
   });
@@ -56,12 +78,8 @@ async function getByUrl(url: string, requestedVersion?: string): Promise<TzData>
   });
 }
 
-export async function getLatest(): Promise<TzData> {
-  return getByUrl(DEFAULT_URL);
-}
-
-export async function getVersion(version: string): Promise<TzData> {
-  return getByUrl(URL_TEMPLATE_FOR_VERSION.replace('{version}', version), version);
+export async function getLatest(displayProgress = false): Promise<TzData> {
+  return getByUrlOrVersion(null, displayProgress);
 }
 
 export async function getAvailableVersions(): Promise<string[]> {
