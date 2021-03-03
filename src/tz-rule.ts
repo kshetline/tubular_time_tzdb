@@ -1,29 +1,29 @@
-import { toInt } from '@tubular/util';
-import { ClockType, DAYS, indexOfFailNotFound, MONTHS, parseAtTime } from './tz-util';
+import { padLeft, toInt } from '@tubular/util';
+import { ClockType, ClockTypeLetters, DAYS, indexOfFailNotFound, MONTHS, parseAtTime } from './tz-util';
 import { parseTimeOffset } from '@tubular/time';
+import { div_rd } from '@tubular/math';
 
 export class TzRule {
   name: string;
-
-  private startYear: number;
-  private endYear: number;
-  private month: number;
+  startYear: number;
+  endYear: number;
+  month: number;
   /*
    * If negative, find dayOfWeek on or before the absolute value of this value in the given month.
    * If 0, find the last dayOfWeek in the given month.
    * If positive, and dayOfWeek is negative, match this exact date.
    * If positive, and dayOfWeek is positive, find dayOfWeek on or after this value in the given month.
    */
-  private dayOfMonth: number;
+  dayOfMonth: number;
   /*
    * 1 for Sunday through 7 for Saturday, negative when day of week doesn't matter (exact date is given).
    */
-  private dayOfWeek: number;
-  private atHour: number;
-  private atMinute: number;
-  private atType: ClockType;
-  private save: number;
-  private letters: string;
+  dayOfWeek: number;
+  atHour: number;
+  atMinute: number;
+  atType: ClockType;
+  save: number;
+  letters: string;
 
   static parseRule(line: string): TzRule {
     const rule = new TzRule();
@@ -77,17 +77,21 @@ export class TzRule {
 
     return rule;
   }
+
+  toCompactTailRule(): string {
+    return [this.startYear, this.month, this.dayOfMonth, this.dayOfWeek, this.atHour + ':' + this.atMinute,
+            this.atType, div_rd(this.save, 60)].join(' ');
+  }
+
+  toString(): string {
+    return [this.name + ': ' + this.startYear, this.endYear, this.month, this.dayOfMonth, this.dayOfWeek,
+            this.atHour + ':' + padLeft(this.atMinute, 2, '0') + ClockTypeLetters[this.atType],
+            div_rd(this.save, 60), this.letters].join(', ');
+  }
 }
 
-export interface TzRuleSet extends ArrayLike<TzRule> {
-  name: string;
-  push: (rule: TzRule) => this;
-}
-
-export function createRuleSet(name: string): TzRuleSet {
-  const ruleSet = [] as unknown as TzRuleSet;
-
-  ruleSet.name = name;
-
-  return ruleSet;
+export class TzRuleSet extends Array<TzRule> {
+  constructor(public name: string) {
+    super();
+  }
 }

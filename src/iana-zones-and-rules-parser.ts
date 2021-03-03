@@ -1,5 +1,5 @@
-import { createIanaZone, IanaZone, IanaZoneRecord } from './iana-zone-record';
-import { createRuleSet, TzRule, TzRuleSet } from './tz-rule';
+import { IanaZone, IanaZoneRecord } from './iana-zone-record';
+import { TzRule, TzRuleSet } from './tz-rule';
 import { asLines, isBoolean, isString } from '@tubular/util';
 import { getByUrlOrVersion, getLatest, TzData } from './read-tzdb';
 
@@ -121,7 +121,7 @@ export class IanaZonesAndRulesParser {
         let ruleSet = this.ruleSetMap.get(ruleName);
 
         if (ruleSet == null) {
-          ruleSet = createRuleSet(ruleName);
+          ruleSet = new TzRuleSet(ruleName);
           this.ruleSetMap.set(ruleName, ruleSet);
         }
 
@@ -138,7 +138,7 @@ export class IanaZonesAndRulesParser {
 
         [zoneRec, zoneId] = IanaZoneRecord.parseZoneRecord(line, this.roundToMinutes);
 
-        zone = createIanaZone(zoneId);
+        zone = new IanaZone(zoneId);
       }
       else if (zone != null)
         [zoneRec] = IanaZoneRecord.parseZoneRecord(line, this.roundToMinutes);

@@ -8,6 +8,8 @@ export const ClockTypeLetters = ['w', 's', 'u'];
 export const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 export const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
+export const DT_FORMAT = 'Y-MM-DD HH:mm';
+
 const calendar = new Calendar();
 const clockTypeMatcher = /.+\d([gsuwz])/i;
 
@@ -18,6 +20,70 @@ export function indexOfFailNotFound(s: string[], query: string): number {
 
   if (result < 0)
     throw new ParseError(`"${query}" not found in ${JSON.stringify(s)}`);
+
+  return result;
+}
+
+function digitValueToChar(digit: number): string {
+  if (digit < 10)
+    digit += 48;
+  else if (digit < 36)
+    digit += 87;
+  else
+    digit += 29;
+
+  return String.fromCharCode(digit);
+}
+
+export function toBase60(x: number, precision = 1): string {
+  let result = '';
+  let sign = 1;
+
+  if (x < 0) {
+    x *= -1;
+    sign = -1;
+  }
+
+  x += Math.pow(60, -precision) / 2;
+
+  let whole = Math.floor(x);
+  let fraction = x - whole;
+
+  if (whole === 0)
+    result += '0';
+  else {
+    while (whole > 0) {
+      const digit = whole % 60;
+
+      result = digitValueToChar(digit) + result;
+      whole /= 60;
+    }
+  }
+
+  if (fraction !== 0) {
+    result += '.';
+
+    while (--precision >= 0) {
+      fraction *= 60;
+
+      const digit = Math.floor(fraction);
+
+      fraction -= digit; // TODO: Was =- in Java. Mistake?
+      result += digitValueToChar(digit);
+    }
+
+    let lastChar: string;
+
+    while ((lastChar = result.charAt(result.length - 1)) === '0' || lastChar === '.') {
+      result = result.slice(0, -1);
+
+      if (lastChar === '.')
+        break;
+    }
+  }
+
+  if (sign < 0)
+    result = '-' + result;
 
   return result;
 }

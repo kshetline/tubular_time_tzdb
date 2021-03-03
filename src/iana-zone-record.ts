@@ -1,5 +1,5 @@
 import { DateTime, parseTimeOffset, Timezone } from '@tubular/time';
-import { ClockTypeLetters, parseUntilTime, ClockType } from './tz-util';
+import { ClockTypeLetters, parseUntilTime, ClockType, DT_FORMAT } from './tz-util';
 
 export class IanaZoneRecord {
   utcOffset: number;
@@ -70,22 +70,15 @@ export class IanaZoneRecord {
     if (this.until !== Number.MAX_SAFE_INTEGER)  {
       const ldt = new DateTime((this.until + (this.untilType !== ClockType.CLOCK_TYPE_UTC ? this.utcOffset : 0)) * 1000, Timezone.ZONELESS);
 
-      s += `, ${ldt.format('Y-MM-DD HH:mm')}${ClockTypeLetters[this.untilType]}`;
+      s += `, ${ldt.format(DT_FORMAT)}${ClockTypeLetters[this.untilType]}`;
     }
 
     return s;
   }
 }
 
-export interface IanaZone extends ArrayLike<IanaZoneRecord> {
-  push: (rule: IanaZoneRecord) => this;
-  zoneId: string;
-}
-
-export function createIanaZone(zoneId: string): IanaZone {
-  const zone = [] as unknown as IanaZone;
-
-  zone.zoneId = zoneId;
-
-  return zone;
+export class IanaZone extends Array<IanaZoneRecord> {
+  constructor(public zoneId: string) {
+    super();
+  }
 }
