@@ -22,6 +22,46 @@ export function indexOfFailNotFound(s: string[], query: string): number {
   return result;
 }
 
+export function fromBase60(x: string): number {
+  let sign = 1;
+  let result = 0;
+  let inFractionalPart = false;
+  let power = 1;
+
+  if (x.startsWith('-')) {
+    sign = -1;
+    x = x.substr(1);
+  }
+  else if (x.startsWith('+'))
+    x = x.substr(1);
+
+  for (let i = 0; i < x.length; ++i) {
+    let digit = x.charCodeAt(i);
+
+    if (digit === 46) {
+      inFractionalPart = true;
+      continue;
+    }
+    else if (digit > 96)
+      digit -= 87;
+    else if (digit > 64)
+      digit -= 29;
+    else
+      digit -= 48;
+
+    if (inFractionalPart) {
+      power /= 60;
+      result += power * digit;
+    }
+    else {
+      result *= 60;
+      result += digit;
+    }
+  }
+
+  return result * sign;
+}
+
 export function parseAtTime(s: string): number[] {
   const result = [0, 0, ClockType.CLOCK_TYPE_WALL];
   const $ = clockTypeMatcher.exec(s);

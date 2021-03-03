@@ -3,7 +3,8 @@ import { ClockType, DAYS, indexOfFailNotFound, MONTHS, parseAtTime } from './tz-
 import { parseTimeOffset } from '@tubular/time';
 
 export class TzRule {
-  private name: string;
+  name: string;
+
   private startYear: number;
   private endYear: number;
   private month: number;
@@ -78,6 +79,15 @@ export class TzRule {
   }
 }
 
-export interface TzRuleSet extends Record<number, TzRule> {
+export interface TzRuleSet extends ArrayLike<TzRule> {
   name: string;
+  push: (rule: TzRule) => this;
+}
+
+export function createRuleSet(name: string): TzRuleSet {
+  const ruleSet = [] as unknown as TzRuleSet;
+
+  ruleSet.name = name;
+
+  return ruleSet;
 }

@@ -77,6 +77,15 @@ export class IanaZoneRecord {
   }
 }
 
-export interface IanaZone extends Record<number, IanaZoneRecord> {
+export interface IanaZone extends ArrayLike<IanaZoneRecord> {
+  push: (rule: IanaZoneRecord) => this;
   zoneId: string;
+}
+
+export function createIanaZone(zoneId: string): IanaZone {
+  const zone = [] as unknown as IanaZone;
+
+  zone.zoneId = zoneId;
+
+  return zone;
 }
