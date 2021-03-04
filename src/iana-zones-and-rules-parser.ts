@@ -70,6 +70,31 @@ export class IanaZonesAndRulesParser {
     return tzData.version;
   }
 
+  getZoneIds(): string[] {
+    let zoneIds: string[] = Array.from(this.zoneMap.keys()).map(zone => '*' + zone);
+
+    zoneIds.push(...Array.from(this.zoneAliases.keys()));
+    zoneIds = zoneIds.sort();
+    zoneIds = zoneIds.map(zone => zone.replace('*', ''));
+
+    return zoneIds;
+  }
+
+  getAliasFor(zoneId: string): string {
+    return this.zoneAliases.get(zoneId);
+  }
+
+  getZone(zoneId: string): IanaZone {
+    if (this.zoneAliases.has(zoneId))
+      zoneId = this.zoneAliases.get(zoneId);
+
+    return this.zoneMap.get(zoneId);
+  }
+
+  getRuleSet(rulesName: string): TzRuleSet {
+    return this.ruleSetMap.get(rulesName);
+  }
+
   private addAlias(alias: string, original: string): void {
     const rootZone = this.getRootZone(original);
 

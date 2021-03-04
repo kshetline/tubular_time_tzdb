@@ -9,7 +9,7 @@ export enum Rollbacks { NO_ROLLBACKS, ROLLBACKS_FOUND, ROLLBACKS_REMOVED, ROLLBA
 
 const formatUtcOffset = Timezone.formatUtcOffset;
 
-function makeTime(utcSeconds: number, utcOffset: number): DateTime {
+export function makeTime(utcSeconds: number, utcOffset: number): DateTime {
   return new DateTime(utcSeconds, new Timezone(
     { zoneName: '', currentUtcOffset: utcOffset, usesDst: false, dstOffset: 0, transitions: null }));
 }
@@ -20,7 +20,7 @@ export class TzTransitionList extends Array<TzTransition> {
 
   private static systemV = /SystemV\/(\w\w\w)\d(\w\w\w)/;
 
-  constructor(public zoneId: string, public aliasFor?: string) {
+  constructor(public zoneId?: string, public aliasFor?: string) {
     super();
   }
 

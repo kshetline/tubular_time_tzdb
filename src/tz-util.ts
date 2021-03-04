@@ -10,9 +10,9 @@ export const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', '
 
 export const DT_FORMAT = 'Y-MM-DD HH:mm';
 
-const calendar = new Calendar();
 const clockTypeMatcher = /.+\d([gsuwz])/i;
 
+export const calendar = new Calendar();
 export class ParseError extends Error {}
 
 export function indexOfFailNotFound(s: string[], query: string): number {
