@@ -110,9 +110,8 @@ export class IanaZonesAndRulesParser {
   }
 
   private parseSources(tzData: TzData): void {
-    for (const sourceName of Object.keys(tzData.sources)) {
-      this.parseSource(sourceName, tzData[sourceName]);
-    }
+    for (const sourceName of Object.keys(tzData.sources))
+      this.parseSource(sourceName, tzData.sources[sourceName]);
 
     // Remove aliases for anything that actually has its own defined zone.
     for (const zoneId of this.zoneMap.keys()) {
@@ -134,10 +133,9 @@ export class IanaZonesAndRulesParser {
     let zoneId: string;
     let zoneRec: IanaZoneRecord;
     const lines = asLines(source);
+    let line: string;
 
-    for (this.lineNo = 1; this.lineNo <= lines.length; ++this.lineNo) {
-      const line = lines[this.lineNo - 1];
-
+    while ((line = this.readLine(lines)) != null) {
       zoneRec = null;
 
       if (line.startsWith('Rule')) {
@@ -177,5 +175,28 @@ export class IanaZonesAndRulesParser {
         }
       }
     }
+  }
+
+  private readLine(lines: string[]): string {
+    let line;
+
+    do {
+      do {
+        line = lines[0];
+        ++this.lineNo;
+        lines.splice(0, 1);
+      } while (line != null && (line.startsWith('#') || line.length === 0));
+
+      if (line != null) {
+        const pos = line.indexOf('#');
+
+        if (pos > 0)
+          line = line.substring(0, pos);
+
+        line = line.trimEnd();
+      }
+    } while (line != null && line.length === 0);
+
+    return line;
   }
 }

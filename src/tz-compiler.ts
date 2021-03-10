@@ -1,7 +1,7 @@
-import { calendar, ClockType } from './tz-util';
+import { calendar, ClockType, makeTime } from './tz-util';
 import { IanaZonesAndRulesParser } from './iana-zones-and-rules-parser';
-import { makeTime, TzTransitionList } from './tz-transition-list';
-import { last } from '@tubular/util';
+import { TzTransitionList } from './tz-transition-list';
+import { last, processMillis } from '@tubular/util';
 import ttime, { DateTime, parseTimeOffset, Timezone } from '@tubular/time';
 import { TzTransition } from './tz-transition';
 import { max, min, sign } from '@tubular/math';
@@ -23,19 +23,20 @@ export interface ZoneProcessingContext
 export class TzCompiler {
   constructor(private parser: IanaZonesAndRulesParser) {}
 
-  compileAll(minYear: number, maxYear: number): Map<string, TzTransitionList>  {
+  async compileAll(minYear: number, maxYear: number): Promise<Map<string, TzTransitionList>>  {
     const compiledZones = new Map<string, TzTransitionList>();
 
     for (const zoneId of this.parser.getZoneIds())
-      compiledZones.set(zoneId, this.compile(zoneId, minYear, maxYear));
+      compiledZones.set(zoneId, await this.compile(zoneId, minYear, maxYear));
 
     return compiledZones;
   }
 
-  compile(zoneId: string, minYear: number, maxYear: number): TzTransitionList  {
+  async compile(zoneId: string, minYear: number, maxYear: number): Promise<TzTransitionList>  {
     const transitions = new TzTransitionList(zoneId);
     const zpc = {} as ZoneProcessingContext;
     const zone = this.parser.getZone(zoneId);
+    let index = 0;
 
     transitions.aliasFor = this.parser.getAliasFor(zoneId);
 
@@ -47,38 +48,49 @@ export class TzCompiler {
 
     transitions.setLastZoneRec(last(zone));
 
-    for (const zoneRec of zone) {
-      let dstOffset = 0;
+    while (index < zone.length) {
+      const startTime = processMillis();
 
-      if (zoneRec.rules != null && zoneRec.rules.indexOf(':') >= 0)
-        dstOffset = parseTimeOffset(zoneRec.rules, true);
+      await new Promise<void>(resolve => {
+        do {
+          const zoneRec = zone[index];
+          let dstOffset = 0;
 
-      zpc.utcOffset = zoneRec.utcOffset;
-      zpc.until = zoneRec.until;
-      zpc.untilType = zoneRec.untilType;
-      zpc.format = zoneRec.format;
+          if (zoneRec.rules != null && zoneRec.rules.indexOf(':') >= 0)
+            dstOffset = parseTimeOffset(zoneRec.rules, true);
 
-      if (zoneRec.rules == null || zoneRec.rules.indexOf(':') >= 0) {
-        const name = TzCompiler.createDisplayName(zoneRec.format, '?', dstOffset !== 0);
+          zpc.utcOffset = zoneRec.utcOffset;
+          zpc.until = zoneRec.until;
+          zpc.untilType = zoneRec.untilType;
+          zpc.format = zoneRec.format;
 
-        transitions.push(new TzTransition(zpc.lastUntil, zoneRec.utcOffset + dstOffset, dstOffset, name));
+          if (zoneRec.rules == null || zoneRec.rules.indexOf(':') >= 0) {
+            const name = TzCompiler.createDisplayName(zoneRec.format, '?', dstOffset !== 0);
 
-        if (zoneRec.untilType === ClockType.CLOCK_TYPE_WALL)
-          zpc.until -= dstOffset;
-      }
-      else
-        this.applyRules(zoneRec.rules, transitions, zpc, minYear, maxYear);
+            transitions.push(new TzTransition(zpc.lastUntil, zoneRec.utcOffset + dstOffset, dstOffset, name));
 
-      zpc.lastUtcOffset = zpc.utcOffset;
-      zpc.lastUntil = zpc.until;
-      zpc.lastUntilType = zpc.untilType;
+            if (zoneRec.untilType === ClockType.CLOCK_TYPE_WALL)
+              zpc.until -= dstOffset;
+          }
+          else
+            this.applyRules(zoneRec.rules, transitions, zpc, minYear, maxYear);
 
-      if (zpc.until < Number.MAX_SAFE_INTEGER / 2) {
-        const ldt = makeTime(zpc.until, zpc.utcOffset);
+          zpc.lastUtcOffset = zpc.utcOffset;
+          zpc.lastUntil = zpc.until;
+          zpc.lastUntilType = zpc.untilType;
 
-        if (ldt.wallTime.y > maxYear)
-          break;
-      }
+          if (zpc.until < Number.MAX_SAFE_INTEGER / 2) {
+            const ldt = makeTime(zpc.until, zpc.utcOffset);
+
+            if (ldt.wallTime.y > maxYear)
+              break;
+          }
+
+          ++index;
+        } while (index < zone.length && processMillis() < startTime + 100);
+
+        resolve();
+      });
     }
 
     transitions.removeDuplicateTransitions();

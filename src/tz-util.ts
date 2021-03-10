@@ -1,5 +1,5 @@
 import { toInt, toNumber } from '@tubular/util';
-import ttime, { Calendar } from '@tubular/time';
+import ttime, { Calendar, DateTime, parseTimeOffset as pto, Timezone } from '@tubular/time';
 import LAST = ttime.LAST;
 
 export enum ClockType { CLOCK_TYPE_WALL, CLOCK_TYPE_STD, CLOCK_TYPE_UTC }
@@ -14,6 +14,18 @@ const clockTypeMatcher = /.+\d([gsuwz])/i;
 
 export const calendar = new Calendar();
 export class ParseError extends Error {}
+
+export function parseTimeOffset(offset: string, roundToMinutes = false): number {
+  if (offset.length < 3 && !offset.includes(':'))
+    offset += ':00';
+
+  return pto(offset, roundToMinutes);
+}
+
+export function makeTime(utcSeconds: number, utcOffset: number): DateTime {
+  return new DateTime(utcSeconds, new Timezone(
+    { zoneName: '', currentUtcOffset: utcOffset, usesDst: false, dstOffset: 0, transitions: null }));
+}
 
 export function indexOfFailNotFound(s: string[], query: string): number {
   const result = s.indexOf(query);
@@ -171,7 +183,7 @@ export function parseUntilTime(s: string, roundToMinutes = false): number[] {
   result[0] = toInt(parts[0]); // year
 
   if (parts.length > 1) {
-    result[1] = indexOfFailNotFound(MONTHS, parts[1].substring(0, 3)) + 1; // month
+    result[1] = indexOfFailNotFound(MONTHS, parts[1].substr(0, 3)) + 1; // month
 
     if (parts.length > 2) {
       let pos: number;

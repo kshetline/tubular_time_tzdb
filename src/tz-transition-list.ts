@@ -2,21 +2,15 @@ import { div_rd } from '@tubular/math';
 import { TzTransition } from './tz-transition';
 import { IanaZoneRecord } from './iana-zone-record';
 import { DateTime, Timezone } from '@tubular/time';
-import { ClockType, DT_FORMAT, toBase60 } from './tz-util';
+import { ClockType, DT_FORMAT, makeTime, toBase60 } from './tz-util';
 import { TzRule } from './tz-rule';
 
 export enum Rollbacks { NO_ROLLBACKS, ROLLBACKS_FOUND, ROLLBACKS_REMOVED, ROLLBACKS_REMAIN };
 
 const formatUtcOffset = Timezone.formatUtcOffset;
 
-export function makeTime(utcSeconds: number, utcOffset: number): DateTime {
-  return new DateTime(utcSeconds, new Timezone(
-    { zoneName: '', currentUtcOffset: utcOffset, usesDst: false, dstOffset: 0, transitions: null }));
-}
-
 export class TzTransitionList extends Array<TzTransition> {
   private lastZoneRec: IanaZoneRecord;
-  private fromJava = false;
 
   private static systemV = /SystemV\/(\w\w\w)\d(\w\w\w)/;
 

@@ -1,5 +1,5 @@
-import { DateTime, parseTimeOffset, Timezone } from '@tubular/time';
-import { ClockTypeLetters, parseUntilTime, ClockType, DT_FORMAT } from './tz-util';
+import { DateTime, Timezone } from '@tubular/time';
+import { ClockTypeLetters, ClockType, DT_FORMAT, parseTimeOffset, parseUntilTime } from './tz-util';
 
 export class IanaZoneRecord {
   utcOffset: number;
@@ -17,7 +17,7 @@ export class IanaZoneRecord {
     if (line.startsWith('Zone')) {
       let sb = '';
 
-      parts = line.split('\\s+');
+      parts = line.split(/\s+/);
       zoneId = parts[1];
 
       for (let i = 2; i < parts.length; ++i) {
@@ -30,7 +30,7 @@ export class IanaZoneRecord {
       line = sb.toString();
     }
     else {
-      parts = line.trim().split('\\s+');
+      parts = line.trim().split(/\s+/);
       line = parts.join(' ');
     }
 

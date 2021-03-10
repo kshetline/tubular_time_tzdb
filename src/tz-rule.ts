@@ -1,6 +1,5 @@
 import { padLeft, toInt } from '@tubular/util';
-import { ClockType, ClockTypeLetters, DAYS, indexOfFailNotFound, MONTHS, parseAtTime } from './tz-util';
-import { parseTimeOffset } from '@tubular/time';
+import { ClockType, ClockTypeLetters, DAYS, indexOfFailNotFound, MONTHS, parseAtTime, parseTimeOffset } from './tz-util';
 import { div_rd } from '@tubular/math';
 
 export class TzRule {
