@@ -41,7 +41,7 @@ export async function getByUrlOrVersion(urlOrVersion?: string, displayProgress =
   extract.on('entry', (header, stream, next) => {
     const sourceName = header.name;
 
-    if (!error && TZ_SOURCE_FILES.has(sourceName) || sourceName === 'version') {
+    if (!error && (TZ_SOURCE_FILES.has(sourceName) || sourceName === 'version')) {
       let data = '';
 
       if (displayProgress && sourceName !== 'version')

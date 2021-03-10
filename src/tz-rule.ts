@@ -47,15 +47,15 @@ export class TzRule {
 
     if (/^last/i.test(parts[6])) {
       rule.dayOfMonth = 0;
-      rule.dayOfWeek = indexOfFailNotFound(DAYS, parts[6].substring(4, 7));
+      rule.dayOfWeek = indexOfFailNotFound(DAYS, parts[6].substring(4, 7)) + 1;
     }
     else if ((pos = parts[6].indexOf('>=')) > 0) {
       rule.dayOfMonth = toInt(parts[6].substring(pos + 2));
-      rule.dayOfWeek = indexOfFailNotFound(DAYS, parts[6].substring(0, 3));
+      rule.dayOfWeek = indexOfFailNotFound(DAYS, parts[6].substring(0, 3)) + 1;
     }
     else if (parts[6].includes('<=')) {
       rule.dayOfMonth = -toInt(parts[6].substring(pos + 2));
-      rule.dayOfWeek = indexOfFailNotFound(DAYS, parts[6].substring(0, 3));
+      rule.dayOfWeek = indexOfFailNotFound(DAYS, parts[6].substring(0, 3)) + 1;
     }
     else {
       rule.dayOfMonth = toInt(parts[6]);

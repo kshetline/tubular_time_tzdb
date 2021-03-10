@@ -10,8 +10,8 @@ describe('TzCompiler', () => {
     const parser = new IanaZonesAndRulesParser(false, true);
     parser.parseTzData(data, true);
     const compiler = new TzCompiler(parser);
-    const foo = await compiler.compileAll(1850, 2500);
-    console.log(foo);
-    expect(true).to.be.true;
+    let count = 0;
+    const zones = await compiler.compileAll(1800, 2087, () => ++count);
+    expect(zones.size).to.equal(count);
   });
 });

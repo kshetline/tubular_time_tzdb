@@ -20,14 +20,21 @@ export interface ZoneProcessingContext
   format: string;
 }
 
+export type TzCompileProgress = (zoneId: string, index: number, total: number) => void;
+
 export class TzCompiler {
   constructor(private parser: IanaZonesAndRulesParser) {}
 
-  async compileAll(minYear: number, maxYear: number): Promise<Map<string, TzTransitionList>>  {
+  async compileAll(minYear: number, maxYear: number, progress?: TzCompileProgress): Promise<Map<string, TzTransitionList>>  {
     const compiledZones = new Map<string, TzTransitionList>();
+    const zoneIds = this.parser.getZoneIds();
 
-    for (const zoneId of this.parser.getZoneIds())
+    for (const zoneId of zoneIds) {
       compiledZones.set(zoneId, await this.compile(zoneId, minYear, maxYear));
+
+      if (progress)
+        progress(zoneId, compiledZones.size, zoneIds.length);
+    }
 
     return compiledZones;
   }
@@ -80,7 +87,7 @@ export class TzCompiler {
           zpc.lastUntilType = zpc.untilType;
 
           if (zpc.until < Number.MAX_SAFE_INTEGER / 2) {
-            const ldt = makeTime(zpc.until, zpc.utcOffset);
+            const ldt = makeTime(zpc.until * 1000, zpc.utcOffset);
 
             if (ldt.wallTime.y > maxYear)
               break;
@@ -116,7 +123,7 @@ export class TzCompiler {
     if (zpc.until >= Number.MAX_SAFE_INTEGER)
       highYear = 9999;
     else
-      highYear = makeTime(zpc.until, zoneOffset).wallTime.y;
+      highYear = makeTime(zpc.until * 1000, zoneOffset).wallTime.y;
 
     const newTransitions = new TzTransitionList();
 
@@ -127,8 +134,8 @@ export class TzCompiler {
           let ldtMonth = rule.month;
           let ldtYear = year;
 
-          if (rule.dayOfWeek >= 0 && rule.dayOfMonth > 0) {
-            ldtDate = calendar.getDayOnOrAfter(year, ldtMonth, rule.dayOfWeek, rule.dayOfMonth);
+          if (rule.dayOfWeek > 0 && rule.dayOfMonth > 0) {
+            ldtDate = calendar.getDayOnOrAfter(year, ldtMonth, rule.dayOfWeek - 1, rule.dayOfMonth);
 
             if (ldtDate <= 0) {
               const ymd = calendar.getDateFromDayNumber(calendar.getDayNumber(ldtYear, ldtMonth, rule.dayOfMonth - ldtDate));
@@ -138,8 +145,8 @@ export class TzCompiler {
               ldtDate = ymd[2];
             }
           }
-          else if (rule.dayOfWeek >= 0 && rule.dayOfMonth < 0) {
-            ldtDate = calendar.getDayOnOrBefore(year, ldtMonth, rule.dayOfWeek, -rule.dayOfMonth);
+          else if (rule.dayOfWeek > 0 && rule.dayOfMonth < 0) {
+            ldtDate = calendar.getDayOnOrBefore(year, ldtMonth, rule.dayOfWeek - 1, -rule.dayOfMonth);
 
             if (ldtDate <= 0) {
               const ymd = calendar.getDateFromDayNumber(calendar.getDayNumber(ldtYear, ldtMonth, rule.dayOfMonth + ldtDate));
@@ -149,14 +156,14 @@ export class TzCompiler {
               ldtDate = ymd[2];
             }
           }
-          else if (rule.dayOfWeek >= 0)
-            ldtDate = calendar.getDateOfNthWeekdayOfMonth(year, ldtMonth, rule.dayOfWeek, LAST);
+          else if (rule.dayOfWeek > 0)
+            ldtDate = calendar.getDateOfNthWeekdayOfMonth(year, ldtMonth, rule.dayOfWeek - 1, LAST);
           else
             ldtDate = rule.dayOfMonth;
 
           const ldt = new DateTime([ldtYear, ldtMonth, ldtDate, rule.atHour, rule.atMinute], Timezone.UT_ZONE);
-          let epochSecond = ldt.utcTimeSeconds + (rule.atType === ClockType.CLOCK_TYPE_UTC ? 0 : zoneOffset);
-          const altEpochSecond = ldt.utcTimeSeconds + (rule.atType === ClockType.CLOCK_TYPE_UTC ? 0 : lastZoneOffset) -
+          let epochSecond = ldt.utcTimeSeconds - (rule.atType === ClockType.CLOCK_TYPE_UTC ? 0 : zoneOffset);
+          const altEpochSecond = ldt.utcTimeSeconds - (rule.atType === ClockType.CLOCK_TYPE_UTC ? 0 : lastZoneOffset) -
                   (rule.atType === ClockType.CLOCK_TYPE_WALL ? lastDst : 0);
 
           if (altEpochSecond === minTime)

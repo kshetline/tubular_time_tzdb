@@ -1,5 +1,6 @@
 import { toInt, toNumber } from '@tubular/util';
 import ttime, { Calendar, DateTime, parseTimeOffset as pto, Timezone } from '@tubular/time';
+import { div_rd } from '@tubular/math';
 import LAST = ttime.LAST;
 
 export enum ClockType { CLOCK_TYPE_WALL, CLOCK_TYPE_STD, CLOCK_TYPE_UTC }
@@ -22,8 +23,8 @@ export function parseTimeOffset(offset: string, roundToMinutes = false): number 
   return pto(offset, roundToMinutes);
 }
 
-export function makeTime(utcSeconds: number, utcOffset: number): DateTime {
-  return new DateTime(utcSeconds, new Timezone(
+export function makeTime(utcMillis: number, utcOffset: number): DateTime {
+  return new DateTime(utcMillis, new Timezone(
     { zoneName: '', currentUtcOffset: utcOffset, usesDst: false, dstOffset: 0, transitions: null }));
 }
 
@@ -68,7 +69,7 @@ export function toBase60(x: number, precision = 1): string {
       const digit = whole % 60;
 
       result = digitValueToChar(digit) + result;
-      whole /= 60;
+      whole = div_rd(whole, 60);
     }
   }
 
@@ -78,9 +79,9 @@ export function toBase60(x: number, precision = 1): string {
     while (--precision >= 0) {
       fraction *= 60;
 
-      const digit = Math.floor(fraction);
+      const digit = Math.floor(fraction + 0.0083);
 
-      fraction -= digit; // TODO: Was =- in Java. Mistake?
+      fraction -= digit;
       result += digitValueToChar(digit);
     }
 

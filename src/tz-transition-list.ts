@@ -193,14 +193,14 @@ export class TzTransitionList extends Array<TzTransition> {
       }
     }
 
-    sb += formatUtcOffset(baseOffset) + ' ' + formatUtcOffset(nominalStdOffset) +
+    sb += formatUtcOffset(baseOffset, true) + ' ' + formatUtcOffset(nominalStdOffset, true) +
       ' ' + div_rd(nominalDstOffset, 60) + ';';
 
     const uniqueOffsetList: string[] = [];
     const offsetList: string[] = [];
 
     for (const t of this) {
-      let offset = toBase60(div_rd(t.utcOffset, 60)) + '/' + toBase60(div_rd(t.dstOffset, 60));
+      let offset = toBase60(t.utcOffset / 60) + '/' + toBase60(t.dstOffset / 60);
 
       if (t.name != null && t.name.length !== 0)
         offset += '/' + t.name;
@@ -226,7 +226,7 @@ export class TzTransitionList extends Array<TzTransition> {
     for (let i = 1; i < this.length; ++i) {
       const t = this[i];
 
-      sb += toBase60(t.time - lastTime, 60) + ' ';
+      sb += toBase60((t.time - lastTime) / 60) + ' ';
       lastTime = t.time;
     }
 
