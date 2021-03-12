@@ -25,6 +25,7 @@ export class TzTransition {
     else
       s = this.formatTime();
 
-    return [s, Timezone.formatUtcOffset(this.utcOffset), Timezone.formatUtcOffset(this.dstOffset), this.name].join(', ');
+    return [s, Timezone.formatUtcOffset(this.utcOffset, true),
+            Timezone.formatUtcOffset(this.dstOffset, true), this.name].join(', ');
   }
 }

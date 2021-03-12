@@ -20,6 +20,7 @@ export class IanaZonesAndRulesParser {
 
   async parseFromOnline(includeSystemV: boolean): Promise<string>;
   async parseFromOnline(urlOrVersion: string): Promise<string>;
+  async parseFromOnline(urlOrVersion: string, includeSystemV: boolean): Promise<string>;
   async parseFromOnline(urlOrVersionOrIsv: string | boolean, includeSystemV = false): Promise<string> {
     const urlOrVersion = isString(urlOrVersionOrIsv) ? urlOrVersionOrIsv : null;
 
