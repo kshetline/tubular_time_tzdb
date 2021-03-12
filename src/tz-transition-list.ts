@@ -284,6 +284,51 @@ export class TzTransitionList extends Array<TzTransition> {
     return sb;
   }
 
+  dump(out: NodeJS.WriteStream = process.stdout, roundToMinutes = false): void {
+    const write = (s: string): void => {
+      out.write(s + '\n');
+    };
+
+    const formatOffset = (offset: number): string => {
+      return formatUtcOffset(offset, true).padEnd(roundToMinutes ? 5 : 7, '0');
+    };
+
+    write(`-------- ${this.zoneId} --------`);
+
+    if (this.length === 0)
+      write('  (empty)');
+    else if (this.length === 1) {
+      const tzt = this[0];
+
+      write(`  Fixed UTC offset at ${formatUtcOffset(tzt.utcOffset)}${tzt.name != null ? ' ' + tzt.name : ''}`);
+    }
+    else {
+      const tzt = this[0];
+      const format = DT_FORMAT + (roundToMinutes ? '' : ':ss');
+      const offsetSpace = '_'.repeat(roundToMinutes ? 4 : 6);
+      const secs = roundToMinutes ? '' : ':__';
+
+      write(`  ____-__-__ __:__${secs} ±${offsetSpace} ±${offsetSpace} --> ____-__-__ __:__${secs} ` +
+                  formatOffset(tzt.utcOffset) + ' ' + formatOffset(tzt.dstOffset) +
+                  (tzt.name != null ? ' ' + tzt.name : ''));
+
+      for (let i = 1; i < this.length; ++i) {
+        const prev = this[i - 1];
+        const prevOffset = prev.utcOffset;
+        const curr = this[i];
+        const currOffset = curr.utcOffset;
+        const prevDateTime = makeTime(curr.time - 1, prevOffset);
+        const currDateTime = makeTime(curr.time, currOffset);
+
+        write('  ' + prevDateTime.format(format) + ' ' + formatOffset(prev.utcOffset) +
+              ' ' + formatOffset(prev.dstOffset) + ' --> ' +
+              currDateTime.format(format) + ' ' + formatOffset(curr.utcOffset) +
+              ' ' + formatOffset(curr.dstOffset) +
+                    (curr.name != null ? ' ' + curr.name : '') + (curr.dstOffset !== 0 ? '*' : ''));
+      }
+    }
+  }
+
   transitionsMatch(otherList: TzTransitionList): boolean {
     if (this.length !== otherList.length) {
       console.error(this.length + ' != ' + otherList.length);

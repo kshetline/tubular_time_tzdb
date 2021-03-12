@@ -25,7 +25,7 @@ export function parseTimeOffset(offset: string, roundToMinutes = false): number 
 
 export function makeTime(utcSeconds: number, utcOffset: number): DateTime {
   return new DateTime(utcSeconds * 1000, new Timezone(
-    { zoneName: '', currentUtcOffset: utcOffset, usesDst: false, dstOffset: 0, transitions: null }));
+    { zoneName: undefined, currentUtcOffset: utcOffset, usesDst: false, dstOffset: 0, transitions: null }));
 }
 
 export function indexOfFailNotFound(s: string[], query: string): number {

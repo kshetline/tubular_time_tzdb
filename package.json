@@ -1,6 +1,6 @@
 {
   "name": "tubular_time_tzdb",
-  "version": "1.0.0",
+  "version": "1.0.0-alpha.0",
   "description": "Reads, parses, and compacts IANA timezones",
   "main": "index.js",
   "bin": {

@@ -1,3 +1,4 @@
+import fs from 'fs';
 import { Command } from 'commander';
 import { DEFAULT_URL } from './read-tzdb';
 import { toInt } from '@tubular/util';
@@ -6,6 +7,8 @@ import { DEFAULT_MAX_YEAR, DEFAULT_MIN_YEAR, TzFormat, TzOutputOptions, TzPreset
 const program = new Command();
 const nl = '\n' + ' '.repeat(18);
 const options = program
+  .name('tzc')
+  .usage('[options] [output_file_name]')
   .option('-5, --systemv', `Include the SystemV timezones from the systemv file by${nl}\
 uncommenting the commented-out zone descriptions.`)
   .option('-f', `Filter out Etc/GMTxxxx and other timezones that are either${nl}\
@@ -14,7 +17,7 @@ redundant or covered by options for creating fixed-offset timezones.`)
   .option('--large', 'Apply presets for "large" timezone definitions.')
   .option('--large-alt', 'Apply presets for "large-alt" timezone definitions.')
   .option('-m', 'Round all UTC offsets to whole minutes.')
-  .option('-q', 'Display fewer warning messages.')
+  .option('-q', 'Display no progress messages, fewer warning messages.')
   .option('-r', `Remove 'calendar rollbacks' from time zone transitions -- that is${nl}\
 modify time zone data to prevent situations where the calendar date${nl}\
 goes backwards as well as the hour and/or minute of the day.`)
@@ -26,9 +29,8 @@ goes backwards as well as the hour and/or minute of the day.`)
   .option('-v, --version', 'Display the version of this tool.')
   .option('-y <year-span>', `<min_year,max_year> Year range for explicit time zone transitions.${nl}\
 Default: ${DEFAULT_MIN_YEAR},${DEFAULT_MAX_YEAR}`)
+  .arguments('[outfile]')
   .parse(process.argv).opts();
-
-console.log(options);
 
 const tzOptions: TzOutputOptions = {
   filtered: options.F,
@@ -37,14 +39,21 @@ const tzOptions: TzOutputOptions = {
   singleZone: options.zoneId,
   systemV: options.systemv,
   urlOrVersion: options.url,
-  quiet: options.q
+  quiet: options.Q
 };
 
-if (options.javascript)
+let file = '';
+
+if (program.args.length > 0) {
+  file = program.args[0];
+  tzOptions.fileStream = fs.createWriteStream(file, 'utf8') as unknown as NodeJS.WriteStream;
+}
+
+if (options.javascript || (!options.typescript && !options.text && file.endsWith('.js')))
   tzOptions.format = TzFormat.JAVASCRIPT;
-else if (options.typescript)
+else if (options.typescript || (!options.text && file.endsWith('.ts')))
   tzOptions.format = TzFormat.TYPESCRIPT;
-else if (options.text)
+else if (options.text || file.endsWith('.txt'))
   tzOptions.format = TzFormat.TEXT;
 
 if (options.Y) {
