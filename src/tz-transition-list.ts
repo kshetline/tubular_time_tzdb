@@ -18,6 +18,21 @@ export class TzTransitionList extends Array<TzTransition> {
     super();
   }
 
+  clone(withId?: string, aliasFor?: string): TzTransitionList {
+    const theClone = new TzTransitionList();
+
+    theClone.lastZoneRec = this.lastZoneRec?.clone();
+    theClone.push(...this);
+
+    if (withId)
+      theClone.zoneId = withId; // Not a perfect clone anymore
+
+    if (aliasFor)
+      theClone.aliasFor = aliasFor; // Not a perfect clone anymore
+
+    return theClone;
+  }
+
   getLastZoneRec(): IanaZoneRecord {
     return this.lastZoneRec;
   }

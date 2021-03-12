@@ -12,9 +12,9 @@ export class TzTransition {
   ) {}
 
   formatTime(): string {
-    const ldt = new DateTime(this.utcOffset * 1000, Timezone.ZONELESS);
+    const ldt = new DateTime((this.time + this.utcOffset) * 1000, Timezone.ZONELESS);
 
-    return ldt.format(DT_FORMAT);
+    return ldt.format(DT_FORMAT + (ldt.wallTime.sec > 0 ? ':ss' : ''));
   }
 
   toString(): string {

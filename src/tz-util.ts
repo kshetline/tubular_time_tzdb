@@ -23,8 +23,8 @@ export function parseTimeOffset(offset: string, roundToMinutes = false): number 
   return pto(offset, roundToMinutes);
 }
 
-export function makeTime(utcMillis: number, utcOffset: number): DateTime {
-  return new DateTime(utcMillis, new Timezone(
+export function makeTime(utcSeconds: number, utcOffset: number): DateTime {
+  return new DateTime(utcSeconds * 1000, new Timezone(
     { zoneName: '', currentUtcOffset: utcOffset, usesDst: false, dstOffset: 0, transitions: null }));
 }
 

@@ -10,7 +10,6 @@ import LAST = ttime.LAST;
 
 export interface ZoneProcessingContext
 {
-  zoneId: string;
   lastUtcOffset: number;
   lastUntil: number;
   lastUntilType: ClockType;
@@ -28,18 +27,30 @@ export class TzCompiler {
   async compileAll(minYear: number, maxYear: number, progress?: TzCompileProgress): Promise<Map<string, TzTransitionList>>  {
     const compiledZones = new Map<string, TzTransitionList>();
     const zoneIds = this.parser.getZoneIds();
+    const deferred: string[] = [];
 
     for (const zoneId of zoneIds) {
-      compiledZones.set(zoneId, await this.compile(zoneId, minYear, maxYear));
+      const transitions = await this.compile(zoneId, minYear, maxYear, true);
+
+      if (transitions)
+        compiledZones.set(zoneId, transitions);
+      else
+        deferred.push(zoneId);
 
       if (progress)
         progress(zoneId, compiledZones.size, zoneIds.length);
     }
 
+    for (const zoneId of deferred) {
+      const alias = this.parser.getAliasFor(zoneId);
+
+      compiledZones.set(zoneId, compiledZones.get(alias).clone(zoneId, alias));
+    }
+
     return compiledZones;
   }
 
-  async compile(zoneId: string, minYear: number, maxYear: number): Promise<TzTransitionList>  {
+  async compile(zoneId: string, minYear: number, maxYear: number, canDefer = false): Promise<TzTransitionList>  {
     const transitions = new TzTransitionList(zoneId);
     const zpc = {} as ZoneProcessingContext;
     const zone = this.parser.getZone(zoneId);
@@ -47,7 +58,9 @@ export class TzCompiler {
 
     transitions.aliasFor = this.parser.getAliasFor(zoneId);
 
-    zpc.zoneId = zoneId;
+    if (canDefer && transitions.aliasFor)
+      return null;
+
     zpc.lastUtcOffset = 0;
     zpc.lastUntil = Number.MIN_SAFE_INTEGER;
     zpc.lastUntilType = ClockType.CLOCK_TYPE_UTC;
@@ -87,7 +100,7 @@ export class TzCompiler {
           zpc.lastUntilType = zpc.untilType;
 
           if (zpc.until < Number.MAX_SAFE_INTEGER / 2) {
-            const ldt = makeTime(zpc.until * 1000, zpc.utcOffset);
+            const ldt = makeTime(zpc.until, zpc.utcOffset);
 
             if (ldt.wallTime.y > maxYear)
               break;
@@ -123,7 +136,7 @@ export class TzCompiler {
     if (zpc.until >= Number.MAX_SAFE_INTEGER)
       highYear = 9999;
     else
-      highYear = makeTime(zpc.until * 1000, zoneOffset).wallTime.y;
+      highYear = makeTime(zpc.until, zoneOffset).wallTime.y;
 
     const newTransitions = new TzTransitionList();
 
