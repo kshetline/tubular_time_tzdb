@@ -37,6 +37,7 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
 
   let minYear = options.minYear ?? DEFAULT_MIN_YEAR;
   let maxYear = options.maxYear ?? DEFAULT_MAX_YEAR;
+  let variableName = 'tzData';
   const currentYear = ttime().wallTime.y - 1;
   const qt = (options.format > TzFormat.JSON) ? "'" : '"';
   const iqt = (options.format > TzFormat.JSON) ? '' : '"';
@@ -53,6 +54,7 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
 
   switch (options.preset) {
     case TzPresets.SMALL:
+      variableName = 'timezoneSmall';
       minYear = currentYear - 5;
       maxYear = currentYear + 5;
       options.filtered = false;
@@ -62,8 +64,9 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
       break;
 
     case TzPresets.LARGE:
+      variableName = 'timezoneLarge';
       minYear = 1800;
-      maxYear = currentYear + 66;
+      maxYear = currentYear + 67;
       options.filtered = false;
       options.roundToMinutes = false;
       options.fixRollbacks = false;
@@ -71,8 +74,9 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
       break;
 
     case TzPresets.LARGE_ALT:
+      variableName = 'timezoneLargeAlt';
       minYear = 1800;
-      maxYear = currentYear + 66;
+      maxYear = currentYear + 67;
       options.filtered = true;
       options.roundToMinutes = true;
       options.fixRollbacks = true;
@@ -165,7 +169,7 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
   else if (options.format !== TzFormat.TEXT) {
     write('/* eslint-disable quote-props */');
     write('// noinspection SpellCheckingInspection');
-    write('const tzData = { // ' + comment);
+    write(`const ${variableName} = /* trim-file-start */{ // ${comment}`);
   }
   else {
     write(comment);
@@ -173,10 +177,8 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
     write();
   }
 
-  if (options.format !== TzFormat.TEXT) {
+  if (options.format !== TzFormat.TEXT)
     write(`  ${iqt}version${iqt}: ${qt}${version}${qt},`);
-    write(`  ${iqt}zones${iqt}: {`);
-  }
 
   for (let i = 0; i < zoneList.length; ++i) {
     const zoneId = zoneList[i];
@@ -205,15 +207,19 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
           aliasFor = `!${popAndC.replace(/;/g, ',')},${aliasFor}`;
       }
 
-      write(`    ${qt}${zoneId}${qt}: ${qt}${aliasFor}${qt}${delim}`);
+      write(`  ${qt}${zoneId}${qt}: ${qt}${aliasFor}${qt}${delim}`);
     }
     else
-      write(`    ${qt}${zoneId}${qt}: ${qt}${appendPopulationAndCountries(cttsByZone.get(zoneId), zoneId)}${qt}${delim}`);
+      write(`  ${qt}${zoneId}${qt}: ${qt}${appendPopulationAndCountries(cttsByZone.get(zoneId), zoneId)}${qt}${delim}`);
   }
 
   if (options.format !== TzFormat.TEXT) {
-    write('  }');
-    write('}' + (options.format !== TzFormat.JSON ? ';' : ''));
+    write('}' + (options.format !== TzFormat.JSON ? '/* trim-file-end */;' : ''));
+    write();
+    write(`Object.freeze(${variableName});`);
+
+    if (options.format === TzFormat.TYPESCRIPT)
+      write(`export default ${variableName};`);
   }
 }
 
