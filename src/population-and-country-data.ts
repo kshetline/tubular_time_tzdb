@@ -558,6 +558,19 @@ export function getPopulation(zoneId: string): number {
   return 0;
 }
 
+export function getCountries(zoneId: string): string {
+  const info = populationAndCountryData[zoneId];
+
+  if (info) {
+    const parts = info.split(';');
+
+    if (parts.length > 1)
+      return parts[1];
+  }
+
+  return null;
+}
+
 export function getPopulationAndCountries(zoneId: string): string {
   let info = populationAndCountryData[zoneId];
 

@@ -4,6 +4,7 @@ import { IanaZoneRecord } from './iana-zone-record';
 import { DateTime, Timezone } from '@tubular/time';
 import { ClockType, DT_FORMAT, makeTime, toBase60 } from './tz-util';
 import { TzRule } from './tz-rule';
+import { getCountries, getPopulation } from './population-and-country-data';
 
 export enum Rollbacks { NO_ROLLBACKS, ROLLBACKS_FOUND, ROLLBACKS_REMOVED, ROLLBACKS_REMAIN };
 
@@ -254,7 +255,9 @@ export class TzTransitionList extends Array<TzTransition> {
 
     write(`-------- ${this.zoneId} --------`);
 
-    if (this.length === 0)
+    if (this.aliasFor)
+      write(`  Alias for ${this.aliasFor}`);
+    else if (this.length === 0)
       write('  (empty)');
     else if (this.length === 1) {
       const tzt = this[0];
@@ -294,6 +297,12 @@ export class TzTransitionList extends Array<TzTransition> {
       if (finalDstRule)
         write(`  Final Daylight Saving Time rule: ${finalDstRule.toString()}`);
     }
+
+    if (getPopulation(this.zoneId) > 0)
+      write(`  Population: ${getPopulation(this.zoneId)}`);
+
+    if (getCountries(this.zoneId))
+      write(`  Countries: ${getCountries(this.zoneId)}`);
   }
 
   transitionsMatch(otherList: TzTransitionList): boolean {

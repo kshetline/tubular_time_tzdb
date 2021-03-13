@@ -1,5 +1,5 @@
 import { padLeft, toInt } from '@tubular/util';
-import { ClockType, ClockTypeLetters, DAYS, indexOfFailNotFound, MONTHS, parseAtTime, parseTimeOffset } from './tz-util';
+import { ClockType, DAYS, indexOfFailNotFound, MONTHS, parseAtTime, parseTimeOffset } from './tz-util';
 import { div_rd } from '@tubular/math';
 
 export class TzRule {
@@ -83,9 +83,34 @@ export class TzRule {
   }
 
   toString(): string {
-    return [this.name + ': ' + this.startYear, this.endYear, this.month, this.dayOfMonth, this.dayOfWeek,
-            this.atHour + ':' + padLeft(this.atMinute, 2, '0') + ClockTypeLetters[this.atType],
-            div_rd(this.save, 60), this.letters].join(', ');
+    const month = MONTHS[this.month - 1];
+    const dayOfWeek = DAYS[this.dayOfWeek - 1];
+    let s = this.name + ': ' +
+            (this.startYear === this.endYear ? this.startYear + ' only' :
+              ((this.startYear < -9999 ? '-inf' : this.startYear) + ' to ' +
+               (this.endYear > 9999 ? '+inf' : this.endYear))) + ', ';
+
+    if (this.dayOfMonth === 0)
+      s += `last ${dayOfWeek} of ${month}`;
+    else if (this.dayOfWeek < 0)
+      s += `${month} ${this.dayOfMonth}`;
+    else if (this.dayOfMonth > 0)
+      s += `first ${dayOfWeek} on/after ${month} ${this.dayOfMonth}`;
+    else
+      s += `last ${dayOfWeek} on/before ${month} ${-this.dayOfMonth}`;
+
+    s += `, at ${this.atHour}:${padLeft(this.atMinute, 2, '0')} `;
+    s += ['wall time', 'std time', 'UTC'][this.atType];
+
+    if (this.save === 0)
+      s += ' begin std time';
+    else
+      s += ` save ${div_rd(this.save, 60)} mins`;
+
+    if (this.letters)
+      s += `, ${this.letters}`;
+
+    return s;
   }
 }
 
