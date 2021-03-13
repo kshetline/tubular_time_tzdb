@@ -163,50 +163,9 @@ export class TzTransitionList extends Array<TzTransition> {
     let nominalDstOffset = 0;
     let finalStdRule: TzRule;
     let finalDstRule: TzRule;
-    let lookingForStd = true;
-    let lookingForStdRule = true;
-    let lookingForDst = true;
-    let lastRuleSet: string = null;
 
-    if (this.lastZoneRec != null && this.lastZoneRec.rules == null) {
-      nominalStdOffset = this.lastZoneRec.utcOffset;
-      lookingForStd = lookingForDst = false;
-    }
-
-    for (let i = this.length - 1; i >= 0 && (lookingForStd || lookingForStdRule || lookingForDst); --i) {
-      const tzt = this[i];
-
-      if (tzt.rule == null) {
-        if (lookingForStd)
-          nominalStdOffset = tzt.utcOffset - tzt.dstOffset;
-
-        if (lookingForDst)
-          nominalDstOffset = tzt.dstOffset;
-
-        break;
-      }
-
-      if (lastRuleSet == null)
-        lastRuleSet = tzt.rule.name;
-      else if (tzt.rule.name !== lastRuleSet)
-        break;
-
-      if (lookingForStd) {
-        nominalStdOffset = tzt.utcOffset - tzt.dstOffset;
-        lookingForStd = false;
-      }
-
-      if (lookingForStdRule && tzt.dstOffset === 0 && tzt.rule.endYear === Number.MAX_SAFE_INTEGER) {
-        finalStdRule = tzt.rule;
-        lookingForStdRule = false;
-      }
-
-      if (lookingForDst && tzt.dstOffset !== 0 && tzt.rule.endYear === Number.MAX_SAFE_INTEGER) {
-        nominalDstOffset = tzt.dstOffset;
-        finalDstRule = tzt.rule;
-        lookingForDst = false;
-      }
-    }
+    [nominalStdOffset, nominalDstOffset, finalStdRule, finalDstRule] =
+      this.findFinalRulesAndOffsets();
 
     sb += formatUtcOffset(baseOffset, true) + ' ' + formatUtcOffset(nominalStdOffset, true) +
       ' ' + div_rd(nominalDstOffset, 60) + ';';
@@ -326,6 +285,14 @@ export class TzTransitionList extends Array<TzTransition> {
               ' ' + formatOffset(curr.dstOffset) +
                     (curr.name != null ? ' ' + curr.name : '') + (curr.dstOffset !== 0 ? '*' : ''));
       }
+
+      const [, , finalStdRule, finalDstRule] = this.findFinalRulesAndOffsets();
+
+      if (finalStdRule)
+        write(`  Final Standard Time rule: ${finalStdRule.toString()}`);
+
+      if (finalDstRule)
+        write(`  Final Daylight Saving Time rule: ${finalDstRule.toString()}`);
     }
   }
 
@@ -354,5 +321,58 @@ export class TzTransitionList extends Array<TzTransition> {
     }
 
     return true;
+  }
+
+  private findFinalRulesAndOffsets(): [number, number, TzRule, TzRule] {
+    let nominalStdOffset = 0;
+    let nominalDstOffset = 0;
+    let finalStdRule: TzRule;
+    let finalDstRule: TzRule;
+    let lookingForStd = true;
+    let lookingForStdRule = true;
+    let lookingForDst = true;
+    let lastRuleSet: string = null;
+
+    if (this.lastZoneRec != null && this.lastZoneRec.rules == null) {
+      nominalStdOffset = this.lastZoneRec.utcOffset;
+      lookingForStd = lookingForDst = false;
+    }
+
+    for (let i = this.length - 1; i >= 0 && (lookingForStd || lookingForStdRule || lookingForDst); --i) {
+      const tzt = this[i];
+
+      if (tzt.rule == null) {
+        if (lookingForStd)
+          nominalStdOffset = tzt.utcOffset - tzt.dstOffset;
+
+        if (lookingForDst)
+          nominalDstOffset = tzt.dstOffset;
+
+        break;
+      }
+
+      if (lastRuleSet == null)
+        lastRuleSet = tzt.rule.name;
+      else if (tzt.rule.name !== lastRuleSet)
+        break;
+
+      if (lookingForStd) {
+        nominalStdOffset = tzt.utcOffset - tzt.dstOffset;
+        lookingForStd = false;
+      }
+
+      if (lookingForStdRule && tzt.dstOffset === 0 && tzt.rule.endYear === Number.MAX_SAFE_INTEGER) {
+        finalStdRule = tzt.rule;
+        lookingForStdRule = false;
+      }
+
+      if (lookingForDst && tzt.dstOffset !== 0 && tzt.rule.endYear === Number.MAX_SAFE_INTEGER) {
+        nominalDstOffset = tzt.dstOffset;
+        finalDstRule = tzt.rule;
+        lookingForDst = false;
+      }
+    }
+
+    return [nominalStdOffset, nominalDstOffset, finalStdRule, finalDstRule];
   }
 }
