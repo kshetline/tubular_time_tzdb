@@ -104,8 +104,12 @@ export class TzRule {
 
     if (this.save === 0)
       s += ' begin std time';
-    else
+    else {
       s += ` save ${div_rd(this.save, 60)} mins`;
+
+      if (this.save % 60 !== 0)
+        s += ` ${this.save % 60} secs`;
+    }
 
     if (this.letters)
       s += `, ${this.letters}`;

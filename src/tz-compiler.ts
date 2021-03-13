@@ -151,22 +151,20 @@ export class TzCompiler {
             ldtDate = calendar.getDayOnOrAfter(year, ldtMonth, rule.dayOfWeek - 1, rule.dayOfMonth);
 
             if (ldtDate <= 0) {
-              const ymd = calendar.getDateFromDayNumber(calendar.getDayNumber(ldtYear, ldtMonth, rule.dayOfMonth - ldtDate));
-
-              ldtYear = ymd[0];
-              ldtMonth = ymd[1];
-              ldtDate = ymd[2];
+              // Use first occurrence of dayOfWeek in next month instead
+              ldtMonth += (ldtMonth < 12 ? 1 : -11);
+              ldtYear += (ldtMonth === 1 ? 1 : 0);
+              ldtDate = calendar.getDayOnOrAfter(ldtYear, ldtMonth, rule.dayOfWeek - 1, 1);
             }
           }
           else if (rule.dayOfWeek > 0 && rule.dayOfMonth < 0) {
             ldtDate = calendar.getDayOnOrBefore(year, ldtMonth, rule.dayOfWeek - 1, -rule.dayOfMonth);
 
             if (ldtDate <= 0) {
-              const ymd = calendar.getDateFromDayNumber(calendar.getDayNumber(ldtYear, ldtMonth, rule.dayOfMonth + ldtDate));
-
-              ldtYear = ymd[0];
-              ldtMonth = ymd[1];
-              ldtDate = ymd[2];
+              // Use last occurrence of dayOfWeek in previous month instead
+              ldtMonth -= (ldtMonth > 1 ? 1 : -11);
+              ldtYear -= (ldtMonth === 12 ? 1 : 0);
+              ldtDate = calendar.getDateOfNthWeekdayOfMonth(ldtYear, ldtMonth, rule.dayOfWeek - 1, LAST);
             }
           }
           else if (rule.dayOfWeek > 0)
