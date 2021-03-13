@@ -1,12 +1,11 @@
-import { calendar, ClockType, makeTime } from './tz-util';
+import { ClockType, makeTime } from './tz-util';
 import { IanaZonesAndRulesParser } from './iana-zones-and-rules-parser';
 import { TzTransitionList } from './tz-transition-list';
 import { last, processMillis } from '@tubular/util';
-import ttime, { DateTime, parseTimeOffset, Timezone } from '@tubular/time';
+import { parseTimeOffset } from '@tubular/time';
 import { TzTransition } from './tz-transition';
-import { max, min, sign } from '@tubular/math';
+import { min, sign } from '@tubular/math';
 import { TzRule } from './tz-rule';
-import LAST = ttime.LAST;
 
 export interface ZoneProcessingContext
 {
@@ -126,7 +125,6 @@ export class TzCompiler {
     let fallbackStdLetters = '?';
 
     const zoneOffset = zpc.utcOffset;
-    const lastZoneOffset = zpc.lastUtcOffset;
     let lastDst = 0;
     let highYear: number;
 
@@ -142,49 +140,9 @@ export class TzCompiler {
 
     for (const rule of ruleSet) {
       if (rule.startYear <= min(highYear, rule.endYear)) {
-        for (let year = max(rule.startYear, 1800); year <= min(highYear, rule.endYear) && year <= maxYear; ++year) {
-          let ldtDate: number;
-          let ldtMonth = rule.month;
-          let ldtYear = year;
+        const ruleTransitions = rule.getTransitions(min(maxYear, highYear), zpc, lastDst);
 
-          if (rule.dayOfWeek > 0 && rule.dayOfMonth > 0) {
-            ldtDate = calendar.getDayOnOrAfter(year, ldtMonth, rule.dayOfWeek - 1, rule.dayOfMonth);
-
-            if (ldtDate <= 0) {
-              // Use first occurrence of dayOfWeek in next month instead
-              ldtMonth += (ldtMonth < 12 ? 1 : -11);
-              ldtYear += (ldtMonth === 1 ? 1 : 0);
-              ldtDate = calendar.getDayOnOrAfter(ldtYear, ldtMonth, rule.dayOfWeek - 1, 1);
-            }
-          }
-          else if (rule.dayOfWeek > 0 && rule.dayOfMonth < 0) {
-            ldtDate = calendar.getDayOnOrBefore(year, ldtMonth, rule.dayOfWeek - 1, -rule.dayOfMonth);
-
-            if (ldtDate <= 0) {
-              // Use last occurrence of dayOfWeek in previous month instead
-              ldtMonth -= (ldtMonth > 1 ? 1 : -11);
-              ldtYear -= (ldtMonth === 12 ? 1 : 0);
-              ldtDate = calendar.getDateOfNthWeekdayOfMonth(ldtYear, ldtMonth, rule.dayOfWeek - 1, LAST);
-            }
-          }
-          else if (rule.dayOfWeek > 0)
-            ldtDate = calendar.getDateOfNthWeekdayOfMonth(year, ldtMonth, rule.dayOfWeek - 1, LAST);
-          else
-            ldtDate = rule.dayOfMonth;
-
-          const ldt = new DateTime([ldtYear, ldtMonth, ldtDate, rule.atHour, rule.atMinute], Timezone.UT_ZONE);
-          let epochSecond = ldt.utcTimeSeconds - (rule.atType === ClockType.CLOCK_TYPE_UTC ? 0 : zoneOffset);
-          const altEpochSecond = ldt.utcTimeSeconds - (rule.atType === ClockType.CLOCK_TYPE_UTC ? 0 : lastZoneOffset) -
-                  (rule.atType === ClockType.CLOCK_TYPE_WALL ? lastDst : 0);
-
-          if (altEpochSecond === minTime)
-            epochSecond = minTime;
-
-          const name = TzCompiler.createDisplayName(zpc.format, rule.letters, rule.save !== 0);
-          const tzt = new TzTransition(epochSecond, zpc.utcOffset + rule.save, rule.save, name, rule);
-
-          newTransitions.push(tzt);
-        }
+        newTransitions.push(...ruleTransitions);
       }
     }
 
@@ -257,7 +215,7 @@ export class TzCompiler {
     }
   }
 
-  private static createDisplayName(format: string, letters: string, isDst: boolean): string {
+  static createDisplayName(format: string, letters: string, isDst: boolean): string {
     let name: string;
     let pos = format.indexOf('%s');
 

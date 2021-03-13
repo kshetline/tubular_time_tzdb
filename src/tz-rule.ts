@@ -1,8 +1,17 @@
 import { padLeft, toInt } from '@tubular/util';
-import { ClockType, DAYS, indexOfFailNotFound, MONTHS, parseAtTime, parseTimeOffset } from './tz-util';
-import { div_rd } from '@tubular/math';
+import { calendar, ClockType, DAYS, indexOfFailNotFound, MONTHS, parseAtTime, parseTimeOffset } from './tz-util';
+import { div_rd, max, min } from '@tubular/math';
+import { TzTransitionList } from './tz-transition-list';
+import ttime, { DateTime, Timezone } from '@tubular/time';
+import { TzTransition } from './tz-transition';
+import { TzCompiler, ZoneProcessingContext } from './tz-compiler';
+import LAST = ttime.LAST;
 
 export class TzRule {
+  // private cachedTransitions: TzTransitionList;
+  // private cacheStartYear = Number.MAX_SAFE_INTEGER;
+  // private cacheEndYear = Number.MIN_SAFE_INTEGER;
+
   name: string;
   startYear: number;
   endYear: number;
@@ -115,6 +124,59 @@ export class TzRule {
       s += `, ${this.letters}`;
 
     return s;
+  }
+
+  getTransitions(maxYear: number, zpc: ZoneProcessingContext, lastDst): TzTransitionList {
+    const newTransitions = new TzTransitionList();
+    const minTime = zpc.lastUntil;
+    const zoneOffset = zpc.utcOffset;
+    const lastZoneOffset = zpc.lastUtcOffset;
+
+    for (let year = max(this.startYear, 1800); year <= min(maxYear, this.endYear); ++year) {
+      let ldtDate: number;
+      let ldtMonth = this.month;
+      let ldtYear = year;
+
+      if (this.dayOfWeek > 0 && this.dayOfMonth > 0) {
+        ldtDate = calendar.getDayOnOrAfter(year, ldtMonth, this.dayOfWeek - 1, this.dayOfMonth);
+
+        if (ldtDate <= 0) {
+          // Use first occurrence of dayOfWeek in next month instead
+          ldtMonth += (ldtMonth < 12 ? 1 : -11);
+          ldtYear += (ldtMonth === 1 ? 1 : 0);
+          ldtDate = calendar.getDayOnOrAfter(ldtYear, ldtMonth, this.dayOfWeek - 1, 1);
+        }
+      }
+      else if (this.dayOfWeek > 0 && this.dayOfMonth < 0) {
+        ldtDate = calendar.getDayOnOrBefore(year, ldtMonth, this.dayOfWeek - 1, -this.dayOfMonth);
+
+        if (ldtDate <= 0) {
+          // Use last occurrence of dayOfWeek in previous month instead
+          ldtMonth -= (ldtMonth > 1 ? 1 : -11);
+          ldtYear -= (ldtMonth === 12 ? 1 : 0);
+          ldtDate = calendar.getDateOfNthWeekdayOfMonth(ldtYear, ldtMonth, this.dayOfWeek - 1, LAST);
+        }
+      }
+      else if (this.dayOfWeek > 0)
+        ldtDate = calendar.getDateOfNthWeekdayOfMonth(year, ldtMonth, this.dayOfWeek - 1, LAST);
+      else
+        ldtDate = this.dayOfMonth;
+
+      const ldt = new DateTime([ldtYear, ldtMonth, ldtDate, this.atHour, this.atMinute], Timezone.UT_ZONE);
+      let epochSecond = ldt.utcTimeSeconds - (this.atType === ClockType.CLOCK_TYPE_UTC ? 0 : zoneOffset);
+      const altEpochSecond = ldt.utcTimeSeconds - (this.atType === ClockType.CLOCK_TYPE_UTC ? 0 : lastZoneOffset) -
+              (this.atType === ClockType.CLOCK_TYPE_WALL ? lastDst : 0);
+
+      if (altEpochSecond === minTime)
+        epochSecond = minTime;
+
+      const name = TzCompiler.createDisplayName(zpc.format, this.letters, this.save !== 0);
+      const tzt = new TzTransition(epochSecond, zpc.utcOffset + this.save, this.save, name, this);
+
+      newTransitions.push(tzt);
+    }
+
+    return newTransitions;
   }
 }
 
