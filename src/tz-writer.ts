@@ -107,9 +107,16 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
     comment += ', calendar rollbacks eliminated';
 
   const compiler = new TzCompiler(parser);
-  const zoneMap = await compiler.compileAll(minYear, maxYear,
-    options.quiet ? undefined : (): any => process.stdout.write('.'));
-  log();
+  let zoneMap: Map<string, TzTransitionList>;
+
+  if (options.singleZone)
+    zoneMap = new Map().set(options.singleZone, await compiler.compile(options.singleZone, minYear, maxYear));
+  else {
+    zoneMap = await compiler.compileAll(minYear, maxYear,
+      options.quiet ? undefined : (): any => process.stdout.write('.'));
+    log();
+  }
+
   let zoneList = Array.from(zoneMap.keys());
   const sortKey = (zoneId: string): string => zoneMap.get(zoneId).aliasFor ? zoneId : '*' + zoneId;
   const zonesByCTT = new Map<string, string>();

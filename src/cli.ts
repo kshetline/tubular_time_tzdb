@@ -36,7 +36,7 @@ const tzOptions: TzOutputOptions = {
   filtered: options.F,
   fixRollbacks: options.R,
   roundToMinutes: options.M,
-  singleZone: options.zoneId,
+  singleZone: options.S,
   systemV: options.systemv,
   urlOrVersion: options.url,
   quiet: options.Q
