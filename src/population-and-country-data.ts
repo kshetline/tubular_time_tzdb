@@ -606,6 +606,8 @@ export function appendPopulationAndCountries(zoneData: string, zoneId: string): 
 
     zoneData += ';'.repeat(6 - partsCount) + info;
   }
+  else
+    zoneData = zoneData.replace(/;+$/, '');
 
   return zoneData;
 }

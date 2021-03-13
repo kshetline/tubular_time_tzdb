@@ -81,12 +81,10 @@ export class TzTransitionList extends Array<TzTransition> {
     if (warningShown) {
       if (fixRollbacks) {
         if (stillHasRollbacks)
-          console.warn(' *** NOT FIXED ***');
+          console.warn('  *** NOT FIXED ***');
         else
-          console.warn(' * fixed *');
+          console.warn('  * fixed *');
       }
-
-      console.warn();
     }
 
     if (!hasRollbacks)

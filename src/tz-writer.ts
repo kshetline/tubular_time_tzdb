@@ -3,7 +3,7 @@ import { appendPopulationAndCountries, getPopulation, getPopulationAndCountries 
 import ttime from '@tubular/time';
 import { compareStrings } from '@tubular/util';
 import { TzCompiler } from './tz-compiler';
-import { TzTransitionList } from './tz-transition-list';
+import { Rollbacks, TzTransitionList } from './tz-transition-list';
 
 export const DEFAULT_MIN_YEAR = 1900;
 export const DEFAULT_MAX_YEAR = 2050;
@@ -55,28 +55,28 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
   switch (options.preset) {
     case TzPresets.SMALL:
       variableName = 'timezoneSmall';
-      minYear = currentYear - 5;
-      maxYear = currentYear + 5;
-      options.filtered = false;
-      options.roundToMinutes = false;
-      options.fixRollbacks = false;
-      options.systemV = false;
+      minYear = options.minYear ?? currentYear - 5;
+      maxYear = options.maxYear ?? currentYear + 5;
+      options.filtered = options.filtered ?? false;
+      options.roundToMinutes = options.roundToMinutes ?? false;
+      options.fixRollbacks = options.fixRollbacks ?? false;
+      options.systemV = true;
       break;
 
     case TzPresets.LARGE:
       variableName = 'timezoneLarge';
-      minYear = 1800;
-      maxYear = currentYear + 67;
-      options.filtered = false;
-      options.roundToMinutes = false;
-      options.fixRollbacks = false;
+      minYear = options.minYear ?? 1800;
+      maxYear = options.maxYear ?? currentYear + 67;
+      options.filtered = options.filtered ?? false;
+      options.roundToMinutes = options.roundToMinutes ?? false;
+      options.fixRollbacks = options.fixRollbacks ?? false;
       options.systemV = true;
       break;
 
     case TzPresets.LARGE_ALT:
       variableName = 'timezoneLargeAlt';
-      minYear = 1800;
-      maxYear = currentYear + 67;
+      minYear = options.minYear ?? 1800;
+      maxYear = options.maxYear ?? currentYear + 67;
       options.filtered = true;
       options.roundToMinutes = true;
       options.fixRollbacks = true;
@@ -122,6 +122,7 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
   const zonesByCTT = new Map<string, string>();
   const cttsByZone = new Map<string, string>();
   let duplicatesFound = false;
+  const notOriginallyAliased = new Set(Array.from(zoneMap.values()).filter(z => !z.aliasFor).map(z => z.zoneId));
 
   zoneList = zoneList.sort((a, b) =>
     compareStrings(sortKey(a), sortKey(b))).filter(z => !shouldFilter(z, options));
@@ -133,6 +134,10 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
 
     if (zone.aliasFor)
       continue;
+
+    if ((!options.quiet || options.fixRollbacks) &&
+        zone.findCalendarRollbacks(options.fixRollbacks, !options.quiet) === Rollbacks.ROLLBACKS_REMAIN)
+      console.error('*** Failed to fix calendar rollbacks in ' + zoneId);
 
     const ctt = zone.createCompactTransitionTable(options.fixRollbacks);
 
@@ -213,6 +218,8 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
         else
           aliasFor = `!${popAndC.replace(/;/g, ',')},${aliasFor}`;
       }
+      else if (notOriginallyAliased.has(zoneId))
+        aliasFor = '!' + aliasFor;
 
       write(`  ${qt}${zoneId}${qt}: ${qt}${aliasFor}${qt}${delim}`);
     }

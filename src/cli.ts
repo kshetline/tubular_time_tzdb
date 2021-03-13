@@ -62,8 +62,8 @@ if (options.Y) {
   if (parts.length === 1)
     tzOptions.minYear = tzOptions.maxYear = toInt(parts[0]);
   else if (parts.length === 2) {
-    tzOptions.minYear = toInt(parts[0], DEFAULT_MIN_YEAR);
-    tzOptions.maxYear = toInt(parts[1], DEFAULT_MAX_YEAR);
+    tzOptions.minYear = parts[0] ? toInt(parts[0], DEFAULT_MIN_YEAR) : undefined;
+    tzOptions.maxYear = parts[1] ? toInt(parts[1], DEFAULT_MAX_YEAR) : undefined;
   }
 }
 
