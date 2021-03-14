@@ -1,5 +1,6 @@
 import { div_rd } from '@tubular/math';
 import { TzTransition } from './tz-transition';
+import { clone } from '@tubular/util';
 import { IanaZoneRecord } from './iana-zone-record';
 import { DateTime, Timezone } from '@tubular/time';
 import { ClockType, DT_FORMAT, makeTime, toBase60 } from './tz-util';
@@ -20,10 +21,7 @@ export class TzTransitionList extends Array<TzTransition> {
   }
 
   clone(withId?: string, aliasFor?: string): TzTransitionList {
-    const theClone = new TzTransitionList();
-
-    theClone.lastZoneRec = this.lastZoneRec?.clone();
-    theClone.push(...this);
+    const theClone = clone(this);
 
     if (withId)
       theClone.zoneId = withId; // Not a perfect clone anymore

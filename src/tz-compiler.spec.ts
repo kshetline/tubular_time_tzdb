@@ -25,9 +25,6 @@ describe('TzCompiler', () => {
       const tZone = Timezone.from(zoneId);
       const tTransitions: Transition[] = (tZone as any).transitions ?? [];
 
-      if (tTransitions.length > 1 && tTransitions[0].transitionTime === tTransitions[1].transitionTime)
-        tTransitions.splice(1, 1);
-
       if (zone.length === 1) {
         expect(zone[0].utcOffset === tZone.utcOffset);
         continue;

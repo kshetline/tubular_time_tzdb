@@ -8,10 +8,6 @@ import { TzCompiler, ZoneProcessingContext } from './tz-compiler';
 import LAST = ttime.LAST;
 
 export class TzRule {
-  // private cachedTransitions: TzTransitionList;
-  // private cacheStartYear = Number.MAX_SAFE_INTEGER;
-  // private cacheEndYear = Number.MIN_SAFE_INTEGER;
-
   name: string;
   startYear: number;
   endYear: number;

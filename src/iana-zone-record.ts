@@ -64,10 +64,6 @@ export class IanaZoneRecord {
     return [zoneRec, zoneId];
   }
 
-  clone(): IanaZoneRecord {
-    return Object.assign(new IanaZoneRecord(), this);
-  }
-
   toString(): string {
     let s = `${this.utcOffset}, ${this.rules}, ${this.format}`;
 
