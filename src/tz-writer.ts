@@ -4,18 +4,28 @@ import ttime from '@tubular/time';
 import { compareStrings } from '@tubular/util';
 import { TzCompiler } from './tz-compiler';
 import { Rollbacks, TzTransitionList } from './tz-transition-list';
+import { Writable } from 'stream';
 
 export const DEFAULT_MIN_YEAR = 1900;
 export const DEFAULT_MAX_YEAR = 2050;
 
 export enum TzFormat { JSON, JAVASCRIPT, TYPESCRIPT, TEXT }
 export enum TzPresets { NONE, SMALL, LARGE, LARGE_ALT }
+export enum TzPhase { DOWNLOAD, EXTRACT, PARSE, COMPILE, COMPRESS }
+export enum TzMessageLevel { INFO, LOG, WARN, ERROR }
 
-export interface TzOutputOptions {
-  fileStream?: NodeJS.WriteStream,
+export type TzCallback = (
+  phase?: TzPhase,
+  level?: TzMessageLevel,
+  message?: string,
+  step?: number,
+  stepCount?: number
+) => void;
+
+export interface TzOptions {
+  callback?: TzCallback,
   filtered?: boolean;
   fixRollbacks?: boolean;
-  format?: TzFormat
   minYear?: number;
   maxYear?: number;
   preset?: TzPresets;
@@ -23,13 +33,32 @@ export interface TzOutputOptions {
   singleZone?: string;
   systemV?: boolean;
   urlOrVersion?: string;
-  quiet?: boolean;
+}
+
+export interface TzOutputOptions extends TzOptions{
+  fileStream?: NodeJS.WriteStream,
+  format?: TzFormat
 }
 
 const skippedZones = /America\/Indianapolis|America\/Knox_IN|Asia\/Riyadh\d\d/;
 const extendedRegions = /(America\/Argentina|America\/Indiana)\/(.+)/;
 const skippedRegions = /Etc|GB|GB-Eire|GMT0|NZ|NZ-CHAT|SystemV|W-SU|Zulu|Mideast|[A-Z]{3}(\d[A-Z]{3})?/;
 const miscUnique = /CST6CDT|EET|EST5EDT|MST7MDT|PST8PDT|SystemV\/AST4ADT|SystemV\/CST6CDT|SystemV\/EST5EDT|SystemV\/MST7MDT|SystemV\/PST8PDT|SystemV\/YST9YDT|WET/;
+
+export async function getTzData(options: TzOptions = {}): Promise<any> {
+  const stream = new Writable();
+  const output: string[] = [];
+
+  stream.write = (chunk: any): boolean => {
+    output.push(chunk.toString());
+    return true;
+  };
+
+  await writeTimezones(Object.assign(
+    { fileStream: stream, format: TzFormat.JSON } as TzOutputOptions, options));
+
+  return JSON.parse(output.join(''));
+}
 
 export async function writeTimezones(options: TzOutputOptions = {}): Promise<void> {
   options.format = options.format ?? TzFormat.JSON;
@@ -42,10 +71,11 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
   const qt = (options.format > TzFormat.JSON) ? "'" : '"';
   const iqt = (options.format > TzFormat.JSON) ? '' : '"';
   const stream = options.fileStream ?? process.stdout;
+  const progress = options.callback;
 
-  const log = (s = ''): void => {
-    if (!options.quiet)
-      console.log(s);
+  const report = (phase?: TzPhase, level?: TzMessageLevel, message?: string, n?: number, m?: number): void => {
+    if (progress)
+      progress(phase, level, message, n, m);
   };
 
   const write = (s = ''): void => {
@@ -83,12 +113,14 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
       options.systemV = true;
   }
 
-  const parser = new IanaZonesAndRulesParser(options.roundToMinutes, !options.quiet);
+  const parser = new IanaZonesAndRulesParser(options.roundToMinutes, progress);
   let version: string;
 
   try {
     version = await parser.parseFromOnline(options.urlOrVersion, options.systemV);
-    log(version);
+
+    if (!options.singleZone)
+      report(TzPhase.PARSE, TzMessageLevel.INFO, version);
   }
   catch (err) {
     console.error(err);
@@ -112,9 +144,8 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
   if (options.singleZone)
     zoneMap = new Map().set(options.singleZone, await compiler.compile(options.singleZone, minYear, maxYear));
   else {
-    zoneMap = await compiler.compileAll(minYear, maxYear,
-      options.quiet ? undefined : (): any => process.stdout.write('.'));
-    log();
+    zoneMap = await compiler.compileAll(minYear, maxYear, progress);
+    report(TzPhase.COMPILE, TzMessageLevel.LOG, '');
   }
 
   let zoneList = Array.from(zoneMap.keys());
@@ -135,9 +166,11 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
     if (zone.aliasFor)
       continue;
 
-    if ((!options.quiet || options.fixRollbacks) &&
-        zone.findCalendarRollbacks(options.fixRollbacks, !options.quiet) === Rollbacks.ROLLBACKS_REMAIN)
+    if ((progress || options.fixRollbacks) &&
+        zone.findCalendarRollbacks(options.fixRollbacks, progress) === Rollbacks.ROLLBACKS_REMAIN)
       console.error('*** Failed to fix calendar rollbacks in ' + zoneId);
+
+    report(TzPhase.COMPRESS, TzMessageLevel.INFO, `Compressing ${zoneId}, \x1B[40G%s of %s`, i, zoneList.length);
 
     const ctt = zone.createCompactTransitionTable(options.fixRollbacks);
 
@@ -189,51 +222,60 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
     write();
   }
 
-  if (options.format !== TzFormat.TEXT)
+  if (options.format !== TzFormat.TEXT) {
     write(`  ${iqt}version${iqt}: ${qt}${version}${qt},`);
+    write(`  ${iqt}years${iqt}: ${qt}${minYear}-${maxYear}${qt},`);
+  }
 
   for (let i = 0; i < zoneList.length; ++i) {
-    const zoneId = zoneList[i];
-    const zone = zoneMap.get(zoneId);
+    await new Promise<void>(resolve => {
+      const zoneId = zoneList[i];
+      const zone = zoneMap.get(zoneId);
 
-    if (options.format === TzFormat.TEXT) {
-      zone.dump(stream, options.roundToMinutes);
+      if (options.format === TzFormat.TEXT) {
+        zone.dump(stream, options.roundToMinutes);
 
-      if (i < zoneList.length)
-        write();
+        if (i < zoneList.length)
+          write();
 
-      continue;
-    }
-
-    const delim = (i < zoneList.length - 1 ? ',' : '');
-
-    if (zone.aliasFor && zoneList.includes(zone.aliasFor)) {
-      let aliasFor = zone.aliasFor;
-      const popAndC = getPopulationAndCountries(zoneId);
-      const aliasPopAndC = getPopulationAndCountries(aliasFor);
-
-      if (popAndC !== aliasPopAndC) {
-        if (!popAndC)
-          aliasFor = '!' + aliasFor;
-        else
-          aliasFor = `!${popAndC.replace(/;/g, ',')},${aliasFor}`;
+        resolve();
       }
-      else if (notOriginallyAliased.has(zoneId))
-        aliasFor = '!' + aliasFor;
 
-      write(`  ${qt}${zoneId}${qt}: ${qt}${aliasFor}${qt}${delim}`);
-    }
-    else
-      write(`  ${qt}${zoneId}${qt}: ${qt}${appendPopulationAndCountries(cttsByZone.get(zoneId), zoneId)}${qt}${delim}`);
+      const delim = (i < zoneList.length - 1 ? ',' : '');
+
+      if (zone.aliasFor && zoneList.includes(zone.aliasFor)) {
+        let aliasFor = zone.aliasFor;
+        const popAndC = getPopulationAndCountries(zoneId);
+        const aliasPopAndC = getPopulationAndCountries(aliasFor);
+
+        if (popAndC !== aliasPopAndC) {
+          if (!popAndC)
+            aliasFor = '!' + aliasFor;
+          else
+            aliasFor = `!${popAndC.replace(/;/g, ',')},${aliasFor}`;
+        }
+        else if (notOriginallyAliased.has(zoneId))
+          aliasFor = '!' + aliasFor;
+
+        write(`  ${qt}${zoneId}${qt}: ${qt}${aliasFor}${qt}${delim}`);
+      }
+      else
+        write(`  ${qt}${zoneId}${qt}: ${qt}${appendPopulationAndCountries(cttsByZone.get(zoneId), zoneId)}${qt}${delim}`);
+
+      resolve();
+    });
   }
 
   if (options.format !== TzFormat.TEXT) {
     write('}' + (options.format !== TzFormat.JSON ? '/* trim-file-end */;' : ''));
-    write();
-    write(`Object.freeze(${variableName});`);
 
-    if (options.format === TzFormat.TYPESCRIPT)
-      write(`export default ${variableName};`);
+    if (options.format !== TzFormat.JSON) {
+      write();
+      write(`Object.freeze(${variableName});`);
+
+      if (options.format === TzFormat.TYPESCRIPT)
+        write(`export default ${variableName};`);
+    }
   }
 }
 

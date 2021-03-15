@@ -2,6 +2,7 @@ import { IanaZone, IanaZoneRecord } from './iana-zone-record';
 import { TzRule, TzRuleSet } from './tz-rule';
 import { asLines, isBoolean, isString } from '@tubular/util';
 import { getByUrlOrVersion, getLatest, TzData } from './read-tzdb';
+import { TzCallback, TzMessageLevel, TzPhase } from './tz-writer';
 
 export class IanaParserError extends Error {
   constructor(public lineNo: number, public sourceName: string, message: string) {
@@ -16,7 +17,7 @@ export class IanaZonesAndRulesParser {
 
   private lineNo = 0;
 
-  constructor(private roundToMinutes = false, private displayProgress = false) {};
+  constructor(private roundToMinutes = false, private progress?: TzCallback) {};
 
   async parseFromOnline(includeSystemV: boolean): Promise<string>;
   async parseFromOnline(urlOrVersion: string): Promise<string>;
@@ -29,16 +30,16 @@ export class IanaZonesAndRulesParser {
     let tzData: TzData;
 
     if (urlOrVersion)
-      tzData = await getByUrlOrVersion(urlOrVersion, this.displayProgress);
+      tzData = await getByUrlOrVersion(urlOrVersion, this.progress);
     else
-      tzData = await getLatest(this.displayProgress);
+      tzData = await getLatest(this.progress);
 
     return this.parseTzData(tzData, includeSystemV);
   }
 
   parseTzData(tzData: TzData, includeSystemV = false): string {
-    if (this.displayProgress)
-      console.info('Parsing tz database sources');
+    if (this.progress)
+      this.progress(TzPhase.PARSE, TzMessageLevel.INFO, 'Parsing tz database sources');
 
     if (!includeSystemV)
       delete tzData.sources.systemv;
@@ -122,7 +123,11 @@ export class IanaZonesAndRulesParser {
 
     // Make sure remaining aliases point to a defined zone.
     for (const zoneId of this.zoneAliases.keys()) {
-      const original = this.zoneAliases.get(zoneId);
+      let original = zoneId;
+
+      do { // Earlier version of the database have indirect links.
+        original = this.zoneAliases.get(original);
+      } while (this.zoneAliases.has(original));
 
       if (!this.zoneMap.has(original))
         throw new IanaParserError(0, null, `${zoneId} is mapped to unknown time zone ${original}`);

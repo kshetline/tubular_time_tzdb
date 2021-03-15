@@ -1,14 +1,16 @@
 import fs from 'fs';
 import { Command } from 'commander';
-import { DEFAULT_URL } from './read-tzdb';
+import { DEFAULT_URL, getAvailableVersions } from './read-tzdb';
 import { toInt } from '@tubular/util';
-import { DEFAULT_MAX_YEAR, DEFAULT_MIN_YEAR, TzFormat, TzOutputOptions, TzPresets, writeTimezones } from './tz-writer';
+import { DEFAULT_MAX_YEAR, DEFAULT_MIN_YEAR, TzFormat, TzMessageLevel, TzOutputOptions, TzPhase, TzPresets, writeTimezones } from './tz-writer';
+const { version } = require('../package.json');
 
 const program = new Command();
 const nl = '\n' + ' '.repeat(18);
 const options = program
   .name('tzc')
   .usage('[options] [output_file_name]')
+  .version(version, '-v, --version')
   .option('-5, --systemv', `Include the SystemV timezones from the systemv file by${nl}\
 uncommenting the commented-out zone descriptions.`)
   .option('-f', `Filter out Etc/GMTxxxx and other timezones that are either${nl}\
@@ -16,6 +18,7 @@ redundant or covered by options for creating fixed-offset timezones.`)
   .option('-j, --javascript', 'Output JavaScript instead of JSON.')
   .option('--large', 'Apply presets for "large" timezone definitions.')
   .option('--large-alt', 'Apply presets for "large-alt" timezone definitions.')
+  .option('--list', 'List available tz database versions.')
   .option('-m', 'Round all UTC offsets to whole minutes.')
   .option('-q', 'Display no progress messages, fewer warning messages.')
   .option('-r', `Remove 'calendar rollbacks' from time zone transitions -- that is${nl}\
@@ -25,21 +28,55 @@ goes backwards as well as the hour and/or minute of the day.`)
   .option('--small', 'Apply presets for "small" timezone definitions.')
   .option('-t, --typescript', 'Output TypeScript instead of JSON.')
   .option('--text', 'Output (somewhat) human-readable text')
-  .option('-u, --url', `URL or version number, such as '2018c', to parse and compile.${nl}Default: ${DEFAULT_URL}`)
-  .option('-v, --version', 'Display the version of this tool.')
+  .option('-u, --url <url>', `URL or version number, such as '2018c', to parse and compile.${nl}Default: ${DEFAULT_URL}`)
   .option('-y <year-span>', `<min_year,max_year> Year range for explicit time zone transitions.${nl}\
 Default: ${DEFAULT_MIN_YEAR},${DEFAULT_MAX_YEAR}`)
   .arguments('[outfile]')
   .parse(process.argv).opts();
 
+if (options.list) {
+  (async function (): Promise<void> {
+    const list = await getAvailableVersions();
+
+    list.forEach(v => console.log(v));
+    process.exit(0);
+  })();
+}
+
+let lastWasInfo = false;
+
+function progress(_phase?: TzPhase, level?: TzMessageLevel, message?: string, step?: number, stepCount?: number): void {
+  const args: (string | number)[] = [message];
+
+  if (step) {
+    args.push(step);
+
+    if (stepCount)
+      args.push(stepCount);
+  }
+
+  if (level === TzMessageLevel.INFO && !options.Q) {
+    args[0] = (lastWasInfo ? '\x1B[A\x1B[K' : '') + message;
+    console.info(...args);
+  }
+  else if (level === TzMessageLevel.LOG && !options.Q)
+    console.log(...args);
+  else if (level === TzMessageLevel.WARN)
+    console.warn(...args);
+  else if (level === TzMessageLevel.ERROR)
+    console.error(...args);
+
+  lastWasInfo = level === TzMessageLevel.INFO;
+}
+
 const tzOptions: TzOutputOptions = {
+  callback: progress,
   filtered: options.F,
   fixRollbacks: options.R,
   roundToMinutes: options.M,
   singleZone: options.S,
   systemV: options.systemv,
   urlOrVersion: options.url,
-  quiet: options.Q
 };
 
 let file = '';

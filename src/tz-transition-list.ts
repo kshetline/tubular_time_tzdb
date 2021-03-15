@@ -6,6 +6,7 @@ import { DateTime, Timezone } from '@tubular/time';
 import { ClockType, DT_FORMAT, makeTime, toBase60 } from './tz-util';
 import { TzRule } from './tz-rule';
 import { getCountries, getPopulation } from './population-and-country-data';
+import { TzCallback, TzMessageLevel, TzPhase } from './tz-writer';
 
 export enum Rollbacks { NO_ROLLBACKS, ROLLBACKS_FOUND, ROLLBACKS_REMOVED, ROLLBACKS_REMAIN };
 
@@ -40,7 +41,7 @@ export class TzTransitionList extends Array<TzTransition> {
     this.lastZoneRec = lastZoneRec;
   }
 
-  findCalendarRollbacks(fixRollbacks: boolean, showWarnings: boolean): Rollbacks {
+  findCalendarRollbacks(fixRollbacks: boolean, progress: TzCallback): Rollbacks {
     let hasRollbacks = false;
     let warningShown = false;
 
@@ -58,10 +59,11 @@ export class TzTransitionList extends Array<TzTransition> {
         const midnight = new DateTime({ y: wallTime.y, m: wallTime.m, d: wallTime.d, utcOffset: prev.utcOffset });
         const forayIntoNextDay = turnbackTime.utcTimeSeconds - midnight.utcTimeSeconds;
 
-        if (showWarnings && !warningShown) {
+        if (progress && !warningShown) {
           const forayMinutes = div_rd(forayIntoNextDay, 60);
           const foraySeconds = forayIntoNextDay % 60;
-          console.warn(`* Warning -- ${this.zoneId}: ${before.format(DT_FORMAT)} rolls back to ${after.format(DT_FORMAT)}` +
+          progress(TzPhase.COMPILE, TzMessageLevel.LOG,
+            `* ${this.zoneId}: ${before.format(DT_FORMAT)} rolls back to ${after.format(DT_FORMAT)}` +
             ` (${forayMinutes} minute${foraySeconds > 0 ? ', ' + foraySeconds + ' second' : ''} foray into next day)`);
           warningShown = true;
         }
@@ -74,7 +76,7 @@ export class TzTransitionList extends Array<TzTransition> {
     let stillHasRollbacks = false;
 
     if (hasRollbacks && fixRollbacks)
-      stillHasRollbacks = (this.findCalendarRollbacks(false, false) === Rollbacks.ROLLBACKS_FOUND);
+      stillHasRollbacks = (this.findCalendarRollbacks(false, progress) === Rollbacks.ROLLBACKS_FOUND);
 
     if (warningShown) {
       if (fixRollbacks) {

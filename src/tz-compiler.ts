@@ -6,6 +6,7 @@ import { parseTimeOffset } from '@tubular/time';
 import { TzTransition } from './tz-transition';
 import { min, sign } from '@tubular/math';
 import { TzRule } from './tz-rule';
+import { TzCallback, TzMessageLevel, TzPhase } from './tz-writer';
 
 export interface ZoneProcessingContext
 {
@@ -18,12 +19,10 @@ export interface ZoneProcessingContext
   format: string;
 }
 
-export type TzCompileProgress = (zoneId: string, index: number, total: number) => void;
-
 export class TzCompiler {
   constructor(private parser: IanaZonesAndRulesParser) {}
 
-  async compileAll(minYear: number, maxYear: number, progress?: TzCompileProgress): Promise<Map<string, TzTransitionList>>  {
+  async compileAll(minYear: number, maxYear: number, progress?: TzCallback): Promise<Map<string, TzTransitionList>>  {
     const compiledZones = new Map<string, TzTransitionList>();
     const zoneIds = this.parser.getZoneIds();
     const deferred: string[] = [];
@@ -37,7 +36,7 @@ export class TzCompiler {
         deferred.push(zoneId);
 
       if (progress)
-        progress(zoneId, compiledZones.size, zoneIds.length);
+        progress(TzPhase.COMPILE, TzMessageLevel.INFO, zoneId + ': \x1B[40G%s of %s', compiledZones.size, zoneIds.length);
     }
 
     for (const zoneId of deferred) {

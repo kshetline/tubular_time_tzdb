@@ -3,15 +3,17 @@ import { getLatest } from './read-tzdb';
 import { TzCompiler } from './tz-compiler';
 import { IanaZonesAndRulesParser } from './iana-zones-and-rules-parser';
 import ttime, { DateTime, Timezone, Transition } from '@tubular/time';
+import { getTzData } from './tz-writer';
 
 ttime.initTimezoneLarge();
 
 describe('TzCompiler', () => {
   it('should compile', async function () {
     this.timeout(60000);
+    console.log(await getTzData());
 
-    const data = await getLatest(true);
-    const parser = new IanaZonesAndRulesParser(false, true);
+    const data = await getLatest();
+    const parser = new IanaZonesAndRulesParser(false);
 
     parser.parseTzData(data, true);
 
