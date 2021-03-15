@@ -259,8 +259,14 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
 
         write(`  ${qt}${zoneId}${qt}: ${qt}${aliasFor}${qt}${delim}`);
       }
-      else
-        write(`  ${qt}${zoneId}${qt}: ${qt}${appendPopulationAndCountries(cttsByZone.get(zoneId), zoneId)}${qt}${delim}`);
+      else {
+        let ctt = cttsByZone.get(zoneId);
+
+        if (!ctt)
+          ctt = zone.createCompactTransitionTable(options.fixRollbacks);
+
+        write(`  ${qt}${zoneId}${qt}: ${qt}${appendPopulationAndCountries(ctt, zoneId)}${qt}${delim}`);
+      }
 
       resolve();
     });
