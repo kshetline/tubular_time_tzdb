@@ -35,7 +35,7 @@ export interface TzOptions {
   urlOrVersion?: string;
 }
 
-export interface TzOutputOptions extends TzOptions{
+export interface TzOutputOptions extends TzOptions {
   fileStream?: NodeJS.WriteStream,
   format?: TzFormat
 }
@@ -168,7 +168,7 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
 
     if ((progress || options.fixRollbacks) &&
         zone.findCalendarRollbacks(options.fixRollbacks, progress) === Rollbacks.ROLLBACKS_REMAIN)
-      console.error('*** Failed to fix calendar rollbacks in ' + zoneId);
+      report(TzPhase.COMPRESS, TzMessageLevel.ERROR, `*** Failed to fix calendar rollbacks in ${zoneId}`);
 
     report(TzPhase.COMPRESS, TzMessageLevel.INFO, `Compressing ${zoneId}, \x1B[40G%s of %s`, i, zoneList.length);
 

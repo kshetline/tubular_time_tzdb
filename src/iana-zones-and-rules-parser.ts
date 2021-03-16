@@ -44,8 +44,8 @@ export class IanaZonesAndRulesParser {
     if (!includeSystemV)
       delete tzData.sources.systemv;
     else if (tzData.sources.systemv)
-      // Uncomment the commented-out time zones in the systemv file
-      tzData.sources.systemv = tzData.sources.systemv.replace(/## Zone/g, 'Zone');
+      // Uncomment the commented-out rules and timezones in the systemv file
+      tzData.sources.systemv = tzData.sources.systemv.replace(/## (Rule\s+SystemV|Zone)/g, '$1');
 
     this.parseSources(tzData);
 

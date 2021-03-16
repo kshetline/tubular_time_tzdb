@@ -111,7 +111,9 @@ else if (options.large)
 else if (options.largeAlt)
   tzOptions.preset = TzPresets.LARGE_ALT;
 
-writeTimezones(tzOptions).catch(err => {
-  console.error(err);
-  process.exit(1);
-});
+if (!options.list) {
+  writeTimezones(tzOptions).catch(err => {
+    console.error(err);
+    process.exit(1);
+  });
+}

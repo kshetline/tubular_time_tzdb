@@ -8,8 +8,11 @@ import { min, sign } from '@tubular/math';
 import { TzRule } from './tz-rule';
 import { TzCallback, TzMessageLevel, TzPhase } from './tz-writer';
 
+export class CompilerError extends Error {}
+
 export interface ZoneProcessingContext
 {
+  zoneId: string;
   lastUtcOffset: number;
   lastUntil: number;
   lastUntilType: ClockType;
@@ -59,6 +62,7 @@ export class TzCompiler {
     if (canDefer && transitions.aliasFor)
       return null;
 
+    zpc.zoneId = zoneId;
     zpc.lastUtcOffset = 0;
     zpc.lastUntil = Number.MIN_SAFE_INTEGER;
     zpc.lastUntilType = ClockType.CLOCK_TYPE_UTC;
@@ -119,6 +123,10 @@ export class TzCompiler {
 
   private applyRules(rulesName: string, transitions: TzTransitionList, zpc: ZoneProcessingContext, minYear: number, maxYear: number): void {
     const ruleSet = this.parser.getRuleSet(rulesName);
+
+    if (!ruleSet)
+      throw new CompilerError(`Unknown rule set "${rulesName}" for timezone ${zpc.zoneId}`);
+
     const minTime = zpc.lastUntil;
     let firstStdLetters = '?';
     let fallbackStdLetters = '?';
