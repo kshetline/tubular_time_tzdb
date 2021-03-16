@@ -167,8 +167,13 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
     if (zone.aliasFor && !options.singleZone)
       continue;
     else if (options.zoneInfoDir) {
-      const tzInfo = TzTransitionList.getZoneTransitionsFromZoneinfo(options.zoneInfoDir, zoneId, options.roundToMinutes);
-      zone.transitionsMatch(tzInfo);
+      const tzInfo = TzTransitionList.getZoneTransitionsFromZoneinfo(options.zoneInfoDir, zoneId,
+        options.roundToMinutes);
+
+      if (tzInfo)
+        zone.transitionsMatch(tzInfo, false, options.roundToMinutes, progress);
+      else
+        progress(TzPhase.VALIDATE, TzMessageLevel.ERROR, `*** ${zoneId}: matching zoneinfo file unavailable for validation`);
     }
 
     if ((progress || options.fixRollbacks) &&

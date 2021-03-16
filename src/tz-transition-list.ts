@@ -1,4 +1,4 @@
-import { div_rd } from '@tubular/math';
+import { abs, max, div_rd } from '@tubular/math';
 import fs from 'fs';
 import path from 'path';
 import { TzTransition } from './tz-transition';
@@ -10,14 +10,13 @@ import { TzRule } from './tz-rule';
 import { getCountries, getPopulation } from './population-and-country-data';
 import { TzCallback, TzMessageLevel, TzPhase } from './tz-writer';
 
-export enum Rollbacks { NO_ROLLBACKS, ROLLBACKS_FOUND, ROLLBACKS_REMOVED, ROLLBACKS_REMAIN };
+export enum Rollbacks { NO_ROLLBACKS, ROLLBACKS_FOUND, ROLLBACKS_REMOVED, ROLLBACKS_REMAIN }
 
+const ZONE_MATCHING_TOLERANCE = 3600 * 24 * 30 * 3; // Three months, in seconds.
 const formatUtcOffset = Timezone.formatUtcOffset;
 
 export class TzTransitionList extends Array<TzTransition> {
   private lastZoneRec: IanaZoneRecord;
-
-  private static systemV = /SystemV\/(\w\w\w)\d(\w\w\w)/;
 
   constructor(public zoneId?: string, public aliasFor?: string) {
     super();
@@ -318,8 +317,13 @@ export class TzTransitionList extends Array<TzTransition> {
     // Derived from bsmi.util.ZoneInfo.java, http://bmsi.com/java/ZoneInfo.java, Copyright (C) 1999 Business Management Systems, Inc.
     // Modified to handle version 2 data.
     const transitions = new TzTransitionList(zoneId);
-    const buf = fs.readFileSync(path.join(zoneInfoPath, zoneId));
-    const format = Math.max(buf.readUInt8(4) - 32, 1);
+    const ziPath = path.join(zoneInfoPath, zoneId);
+
+    if (!fs.existsSync(ziPath))
+      return null;
+
+    const buf = fs.readFileSync(ziPath);
+    const format = max(buf.readUInt8(4) - 32, 1);
     let offset = 32 + (format > 1 ? 51 : 0);
     const transitionCount = buf.readInt32BE(offset);
     const typeCount = buf.readInt32BE(offset += 4);
@@ -390,27 +394,39 @@ export class TzTransitionList extends Array<TzTransition> {
     return transitions;
   }
 
-  transitionsMatch(otherList: TzTransitionList, progress?: TzCallback): boolean {
+  transitionsMatch(otherList: TzTransitionList, exact = true, roundToMinutes = false, progress?: TzCallback): boolean {
     const report = (message: string): void => {
       if (progress)
         progress(TzPhase.VALIDATE, TzMessageLevel.ERROR, message);
     };
 
-    if (this.length !== otherList.length) {
-      report(`${this.zoneId}: ${this.length} != ${otherList.length}`);
+    if (exact && this.length !== otherList.length) {
+      report(`*** ${this.zoneId}: ${this.length} != ${otherList.length}`);
 
       return false;
     }
 
-    for (let i = 0; i < this.length; ++i) {
-      const ti1 = this[i];
-      const ti2 = otherList[i];
+    const roundingAllowance = (roundToMinutes ? 60 : 0);
+    const start = (exact ? 0 : 1);
 
-      if (ti1.time      !== ti2.time ||
-          ti1.utcOffset !== ti2.utcOffset ||
-          ti1.dstOffset !== ti2.dstOffset ||
+    for (let i = start, j = start; i < this.length && j < otherList.length; ++i, ++j) {
+      const ti1 = this[i];
+      const ti2 = otherList[j];
+
+      if (!exact && ti1.time + ZONE_MATCHING_TOLERANCE < ti2.time) {
+        --i;
+        continue;
+      }
+      else if (ti2.time + ZONE_MATCHING_TOLERANCE < ti1.time) {
+        --j;
+        continue;
+      }
+
+      if (abs(ti1.time      - ti2.time) < roundingAllowance ||
+          abs(ti1.utcOffset - ti2.utcOffset) < roundingAllowance ||
+          abs(ti1.dstOffset - ti2.dstOffset) < roundingAllowance ||
           ti1.name      !== ti2.name) {
-        report(`${this.zoneId}, index: ${i}`);
+        report(`*** ${this.zoneId}, mismatch at index ${i}${i !== j ? '/' + j : ''}`);
         report(`  1: ${ti1.time}, ${ti1.utcOffset}, ${ti1.dstOffset}, ${ti1.name}: ${ti1.formatTime()}`);
         report(`  2: ${ti2.time}, ${ti2.utcOffset}, ${ti2.dstOffset}, ${ti2.name}: ${ti2.formatTime()}`);
         report(`  -: ${ti2.time - ti1.time}`);

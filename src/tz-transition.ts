@@ -12,6 +12,9 @@ export class TzTransition {
   ) {}
 
   formatTime(): string {
+    if (this.time === Number.MIN_SAFE_INTEGER)
+      return '(arbitrary past)';
+
     const ldt = new DateTime((this.time + this.utcOffset) * 1000, Timezone.ZONELESS);
 
     return ldt.format(DT_FORMAT + (ldt.wallTime.sec > 0 ? ':ss' : ''));
