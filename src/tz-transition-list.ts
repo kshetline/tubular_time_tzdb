@@ -1,4 +1,6 @@
 import { div_rd } from '@tubular/math';
+import fs from 'fs';
+import path from 'path';
 import { TzTransition } from './tz-transition';
 import { clone } from '@tubular/util';
 import { IanaZoneRecord } from './iana-zone-record';
@@ -304,9 +306,98 @@ export class TzTransitionList extends Array<TzTransition> {
       write(`  Countries: ${getCountries(this.zoneId)}`);
   }
 
-  transitionsMatch(otherList: TzTransitionList): boolean {
+  static getZoneTransitionsFromZoneinfo(zoneInfoPath: string, zoneId: string,
+                                        roundToMinutes = false): TzTransitionList {
+    function conditionallyRoundToMinutes(seconds: number, roundToMinutes: boolean): number {
+      if (roundToMinutes)
+        seconds = div_rd(seconds + 30, 60) * 60;
+
+      return seconds;
+    }
+
+    // Derived from bsmi.util.ZoneInfo.java, http://bmsi.com/java/ZoneInfo.java, Copyright (C) 1999 Business Management Systems, Inc.
+    // Modified to handle version 2 data.
+    const transitions = new TzTransitionList(zoneId);
+    const buf = fs.readFileSync(path.join(zoneInfoPath, zoneId));
+    const format = Math.max(buf.readUInt8(4) - 32, 1);
+    let offset = 32 + (format > 1 ? 51 : 0);
+    const transitionCount = buf.readInt32BE(offset);
+    const typeCount = buf.readInt32BE(offset += 4);
+    const times = new Array<number>(transitionCount);
+    const typeIndices = new Uint8Array(transitionCount);
+
+    offset += 8;
+
+    for (let i = 0; i < transitionCount; ++i) {
+      if (format > 1) {
+        times[i] = Number(buf.readBigInt64BE(offset));
+        offset += 8;
+      }
+      else {
+        times[i] = buf.readInt32BE(offset);
+        offset += 4;
+      }
+    }
+
+    buf.copy(typeIndices, 0, offset, offset += transitionCount);
+
+    const offsets = new Array<number>(typeCount);
+    const dstFlags = new Array<boolean>(typeCount);
+    const nameIndices = new Uint8Array(typeCount);
+    const names = new Array<string>(typeCount);
+
+    for (let i = 0; i < typeCount; ++i) {
+      offsets[i] = buf.readInt32BE(offset);
+      dstFlags[i] = (buf.readInt8(offset += 4) !== 0);
+      nameIndices[i] = buf.readInt8(offset += 1);
+      ++offset;
+    }
+
+    const namesOffset = offset;
+    let lastStdOffset = offsets[0];
+
+    for (let i = 0; i < typeCount; ++i) {
+      const index = nameIndices[i];
+      let end = index;
+
+      while (buf.readInt8(namesOffset + end) !== 0)
+        ++end;
+
+      names[i] = buf.toString('utf8', namesOffset + index, namesOffset + end);
+    }
+
+    for (let i = 0; i <= transitionCount; ++i) {
+      const type = (i < 1 ? 0 : typeIndices[i - 1]);
+      let tTime: number;
+      const offset = conditionallyRoundToMinutes(offsets[type], roundToMinutes);
+      const isDst = dstFlags[type];
+      const dst = isDst ? offset - lastStdOffset : 0;
+      const name = names[type];
+
+      if (i === 0 || times[i - 1] === -0x8000000)
+        tTime = Number.MIN_SAFE_INTEGER;
+      else
+        tTime = conditionallyRoundToMinutes(times[i - 1], roundToMinutes);
+
+      transitions.push(new TzTransition(tTime, offset, dst, /^[-+]/.test(name) ? null : name));
+
+      if (!isDst)
+        lastStdOffset = offset;
+    }
+
+    transitions.removeDuplicateTransitions();
+
+    return transitions;
+  }
+
+  transitionsMatch(otherList: TzTransitionList, progress?: TzCallback): boolean {
+    const report = (message: string): void => {
+      if (progress)
+        progress(TzPhase.VALIDATE, TzMessageLevel.ERROR, message);
+    };
+
     if (this.length !== otherList.length) {
-      console.error(this.length + ' != ' + otherList.length);
+      report(`${this.zoneId}: ${this.length} != ${otherList.length}`);
 
       return false;
     }
@@ -319,10 +410,10 @@ export class TzTransitionList extends Array<TzTransition> {
           ti1.utcOffset !== ti2.utcOffset ||
           ti1.dstOffset !== ti2.dstOffset ||
           ti1.name      !== ti2.name) {
-        console.error('index: ' + i);
-        console.error('  1: ' + ti1.time + ', ' + ti1.utcOffset + ', ' + ti1.dstOffset + ', ' + ti1.name + ': ' + ti1.formatTime());
-        console.error('  2: ' + ti2.time + ', ' + ti2.utcOffset + ', ' + ti2.dstOffset + ', ' + ti2.name + ': ' + ti2.formatTime());
-        console.error('  -: ' + (ti2.time - ti1.time));
+        report(`${this.zoneId}, index: ${i}`);
+        report(`  1: ${ti1.time}, ${ti1.utcOffset}, ${ti1.dstOffset}, ${ti1.name}: ${ti1.formatTime()}`);
+        report(`  2: ${ti2.time}, ${ti2.utcOffset}, ${ti2.dstOffset}, ${ti2.name}: ${ti2.formatTime()}`);
+        report(`  -: ${ti2.time - ti1.time}`);
 
         return false;
       }

@@ -6,7 +6,7 @@ import { DEFAULT_MAX_YEAR, DEFAULT_MIN_YEAR, TzFormat, TzMessageLevel, TzOutputO
 const { version } = require('../package.json');
 
 const program = new Command();
-const nl = '\n' + ' '.repeat(18);
+const nl = '\n' + ' '.repeat(20);
 const options = program
   .name('tzc')
   .usage('[options] [output_file_name]')
@@ -31,6 +31,9 @@ goes backwards as well as the hour and/or minute of the day.`)
   .option('-u, --url <url>', `URL or version number, such as '2018c', to parse and compile.${nl}Default: ${DEFAULT_URL}`)
   .option('-y <year-span>', `<min_year,max_year> Year range for explicit time zone transitions.${nl}\
 Default: ${DEFAULT_MIN_YEAR},${DEFAULT_MAX_YEAR}`)
+  .option('-z <zone-info-dir>', `Validate this tool's output against output from the standard${nl}\
+zic tool stored in the given directory.${nl}\
+(Validation is done before applying the -r option.)`)
   .arguments('[outfile]')
   .parse(process.argv).opts();
 
@@ -78,6 +81,7 @@ const tzOptions: TzOutputOptions = {
   singleZone: options.S,
   systemV: options.systemv,
   urlOrVersion: options.url,
+  zoneInfoDir: options.Z
 };
 
 let file = '';

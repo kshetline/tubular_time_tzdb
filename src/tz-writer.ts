@@ -11,7 +11,7 @@ export const DEFAULT_MAX_YEAR = 2050;
 
 export enum TzFormat { JSON, JAVASCRIPT, TYPESCRIPT, TEXT }
 export enum TzPresets { NONE, SMALL, LARGE, LARGE_ALT }
-export enum TzPhase { DOWNLOAD, EXTRACT, PARSE, COMPILE, COMPRESS }
+export enum TzPhase { DOWNLOAD, EXTRACT, PARSE, COMPILE, VALIDATE, COMPRESS }
 export enum TzMessageLevel { INFO, LOG, WARN, ERROR }
 
 export type TzCallback = (
@@ -33,6 +33,7 @@ export interface TzOptions {
   singleZone?: string;
   systemV?: boolean;
   urlOrVersion?: string;
+  zoneInfoDir?: string;
 }
 
 export interface TzOutputOptions extends TzOptions {
@@ -163,14 +164,18 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
     const zoneId = zoneList[i];
     const zone = zoneMap.get(zoneId);
 
-    if (zone.aliasFor)
+    if (zone.aliasFor && !options.singleZone)
       continue;
+    else if (options.zoneInfoDir) {
+      const tzInfo = TzTransitionList.getZoneTransitionsFromZoneinfo(options.zoneInfoDir, zoneId, options.roundToMinutes);
+      zone.transitionsMatch(tzInfo);
+    }
 
     if ((progress || options.fixRollbacks) &&
         zone.findCalendarRollbacks(options.fixRollbacks, progress) === Rollbacks.ROLLBACKS_REMAIN)
       report(TzPhase.COMPRESS, TzMessageLevel.ERROR, `*** Failed to fix calendar rollbacks in ${zoneId}`);
 
-    report(TzPhase.COMPRESS, TzMessageLevel.INFO, `Compressing ${zoneId} \x1B[40G%s of %s`, i, zoneList.length);
+    report(TzPhase.COMPRESS, TzMessageLevel.INFO, `Compressing ${zoneId} \x1B[40G%s of %s`, i + 1, zoneList.length);
 
     const ctt = zone.createCompactTransitionTable(options.fixRollbacks);
 
@@ -201,7 +206,7 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
     if (zone.aliasFor) {
       let parent: TzTransitionList;
 
-      while ((parent = zoneMap.get(zone.aliasFor)).aliasFor)
+      while ((parent = zoneMap.get(zone.aliasFor))?.aliasFor)
         zone.aliasFor = parent.aliasFor;
     }
   }
