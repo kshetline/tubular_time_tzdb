@@ -79,7 +79,7 @@ export async function getByUrlOrVersion(urlOrVersion?: string, progress?: TzCall
     stream.pipe(extract);
     extract.on('finish', () => error ? reject(makeError(error)) : resolve(result));
     extract.on('error', err => {
-      if (/unexpected end of data/i.test(err.message) && Object.keys(result.sources).length >= 11)
+      if (/unexpected end of data|invalid tar header/i.test(err.message) && Object.keys(result.sources).length >= 11)
         resolve(result);
       else
         reject(makeError(err));

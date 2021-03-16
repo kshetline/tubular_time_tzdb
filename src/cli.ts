@@ -55,10 +55,11 @@ function progress(_phase?: TzPhase, level?: TzMessageLevel, message?: string, st
       args.push(stepCount);
   }
 
-  if (level === TzMessageLevel.INFO && !options.Q) {
-    args[0] = (lastWasInfo ? '\x1B[A\x1B[K' : '') + message;
+  if (lastWasInfo)
+    process.stdout.write('\x1B[A\x1B[K');
+
+  if (level === TzMessageLevel.INFO && !options.Q)
     console.info(...args);
-  }
   else if (level === TzMessageLevel.LOG && !options.Q)
     console.log(...args);
   else if (level === TzMessageLevel.WARN)

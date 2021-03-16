@@ -42,7 +42,7 @@ export class TzTransitionList extends Array<TzTransition> {
   }
 
   findCalendarRollbacks(fixRollbacks: boolean, progress: TzCallback): Rollbacks {
-    let hasRollbacks = false;
+    let rollbackCount = 0;
     let warningShown = false;
 
     for (let i = 1; i < this.length; ++i) {
@@ -52,7 +52,7 @@ export class TzTransitionList extends Array<TzTransition> {
       const after = makeTime(curr.time, curr.utcOffset).tz(Timezone.ZONELESS, true);
 
       if (after.compare(before, 'days') < 0) {
-        hasRollbacks = true;
+        ++rollbackCount;
 
         const turnbackTime = makeTime(curr.time, prev.utcOffset);
         const wallTime = turnbackTime.wallTime;
@@ -75,19 +75,20 @@ export class TzTransitionList extends Array<TzTransition> {
 
     let stillHasRollbacks = false;
 
-    if (hasRollbacks && fixRollbacks)
+    if (rollbackCount > 0 && fixRollbacks)
       stillHasRollbacks = (this.findCalendarRollbacks(false, progress) === Rollbacks.ROLLBACKS_FOUND);
 
     if (warningShown) {
       if (fixRollbacks) {
         if (stillHasRollbacks)
-          console.warn('  *** NOT FIXED ***');
+          progress(TzPhase.COMPILE, TzMessageLevel.WARN,
+            `  *** ${this.zoneId} rollback${rollbackCount > 1 ? 's' : ''} NOT FIXED ***`);
         else
-          console.warn('  * fixed *');
+          progress(TzPhase.COMPILE, TzMessageLevel.LOG, '  * fixed *');
       }
     }
 
-    if (!hasRollbacks)
+    if (rollbackCount === 0)
       return Rollbacks.NO_ROLLBACKS;
     else if (!fixRollbacks)
       return Rollbacks.ROLLBACKS_FOUND;

@@ -170,7 +170,7 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
         zone.findCalendarRollbacks(options.fixRollbacks, progress) === Rollbacks.ROLLBACKS_REMAIN)
       report(TzPhase.COMPRESS, TzMessageLevel.ERROR, `*** Failed to fix calendar rollbacks in ${zoneId}`);
 
-    report(TzPhase.COMPRESS, TzMessageLevel.INFO, `Compressing ${zoneId}, \x1B[40G%s of %s`, i, zoneList.length);
+    report(TzPhase.COMPRESS, TzMessageLevel.INFO, `Compressing ${zoneId} \x1B[40G%s of %s`, i, zoneList.length);
 
     const ctt = zone.createCompactTransitionTable(options.fixRollbacks);
 

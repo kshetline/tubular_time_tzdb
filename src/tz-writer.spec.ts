@@ -2,7 +2,8 @@ import { expect } from 'chai';
 import { getAvailableVersions } from './read-tzdb';
 import { getTzData, TzOptions, TzPresets } from './tz-writer';
 
-const badVersions = ['1999f'];
+// No bad versions I can't currently manage to read, although a few require workarounds.
+const badVersions = [];
 
 describe('TzWriter', () => {
   // VERY slow test. Not for routine use!
