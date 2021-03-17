@@ -10,8 +10,10 @@ const program = new Command();
 const nl = '\n' + ' '.repeat(20);
 const options = program
   .name('tzc')
+  .description(`Downloads and compiles IANA timezone data, converting to text or @tubular/time-compatible data.`)
   .usage('[options] [output_file_name]')
   .version(version, '-v, --version')
+  .addHelpText('after', '  -,                  Use dash by itself to output to stdout.')
   .option('-5, --systemv', `Include the SystemV timezones from the systemv file by${nl}\
 uncommenting the commented-out zone descriptions.`)
   .option('-f', `Filter out Etc/GMTxxxx and other timezones that are either${nl}\
@@ -21,6 +23,7 @@ redundant or covered by options for creating fixed-offset timezones.`)
   .option('--large-alt', 'Apply presets for "large-alt" timezone definitions.')
   .option('--list', 'List available tz database versions.')
   .option('-m', 'Round all UTC offsets to whole minutes.')
+  .option('-o', 'Overwrite existing file.')
   .option('-q', 'Display no progress messages, fewer warning messages.')
   .option('-r', `Remove 'calendar rollbacks' from time zone transitions -- that is${nl}\
 modify time zone data to prevent situations where the calendar date${nl}\
@@ -38,10 +41,52 @@ zic tool stored in the given directory.${nl}\
   .arguments('[outfile]')
   .parse(process.argv).opts();
 
+let lastWasInfo = false;
+
+function progress(phase?: TzPhase, level?: TzMessageLevel, message?: string, step?: number, stepCount?: number): void {
+  const args: (string | number)[] = [message ?? ''];
+
+  if (phase != null)
+    args[0] = TzPhase[phase] + (args[0] ? ': ' + args[0] : '');
+
+  if (step) {
+    args.push(padLeft(step, 3));
+
+    if (stepCount)
+      args.push(stepCount);
+  }
+
+  if (lastWasInfo)
+    process.stdout.write('\x1B[A\x1B[K');
+
+  if (level === TzMessageLevel.INFO && !options.q)
+    console.info(...args);
+  else if (level === TzMessageLevel.LOG && !options.q)
+    console.log(...args);
+  else if (level === TzMessageLevel.WARN)
+    console.warn(...args);
+  else if (level === TzMessageLevel.ERROR)
+    console.error(...args);
+
+  lastWasInfo = level === TzMessageLevel.INFO;
+}
+
+async function getUserInput(): Promise<string> {
+  return new Promise<string>(resolve => {
+    const callback = (data: any): void => {
+      process.stdin.off('data', callback);
+      resolve(data.toString().trim());
+    };
+
+    process.stdin.on('data', callback);
+  });
+}
+
 (async function (): Promise<void> {
   if (options.list) {
     try {
       (await getAvailableVersions()).forEach(v => console.log(v));
+      process.exit(0);
     }
     catch (err) {
       console.error(err);
@@ -51,45 +96,15 @@ zic tool stored in the given directory.${nl}\
     return;
   }
 
-  let lastWasInfo = false;
-
-  function progress(phase?: TzPhase, level?: TzMessageLevel, message?: string, step?: number, stepCount?: number): void {
-    const args: (string | number)[] = [message ?? ''];
-
-    if (phase != null)
-      args[0] = TzPhase[phase] + (args[0] ? ': ' + args[0] : '');
-
-    if (step) {
-      args.push(padLeft(step, 3));
-
-      if (stepCount)
-        args.push(stepCount);
-    }
-
-    if (lastWasInfo)
-      process.stdout.write('\x1B[A\x1B[K');
-
-    if (level === TzMessageLevel.INFO && !options.Q)
-      console.info(...args);
-    else if (level === TzMessageLevel.LOG && !options.Q)
-      console.log(...args);
-    else if (level === TzMessageLevel.WARN)
-      console.warn(...args);
-    else if (level === TzMessageLevel.ERROR)
-      console.error(...args);
-
-    lastWasInfo = level === TzMessageLevel.INFO;
-  }
-
   const tzOptions: TzOutputOptions = {
     callback: progress,
-    filtered: options.F,
-    fixRollbacks: options.R,
-    roundToMinutes: options.M,
-    singleZone: options.S,
+    filtered: options.f,
+    fixRollbacks: options.r,
+    roundToMinutes: options.m,
+    singleZone: options.s,
     systemV: options.systemv,
     urlOrVersion: options.url,
-    zoneInfoDir: options.Z
+    zoneInfoDir: options.z
   };
 
   if (options.small)
@@ -100,6 +115,7 @@ zic tool stored in the given directory.${nl}\
     tzOptions.preset = TzPresets.LARGE_ALT;
 
   let file = '';
+  let fileStream: fs.WriteStream;
 
   if (program.args[0] !== '-')
     file = program.args[0] || ('timezone' + (['s', '-small', '-large', '-large-alt'][tzOptions.preset ?? 0]));
@@ -113,11 +129,22 @@ zic tool stored in the given directory.${nl}\
 
   if (file && !file.includes('.')) {
     file += ['.json', '.js', '.ts', '.txt'][tzOptions.format ?? 0];
-    tzOptions.fileStream = fs.createWriteStream(file, 'utf8') as unknown as NodeJS.WriteStream;
+
+    if (!options.o && fs.existsSync(file)) {
+      console.log(options);
+      process.stdout.write(`File "${file}" already exists. Overwrite it? (y/N)? `);
+
+      const response = await getUserInput();
+
+      if (!/^y/i.test(response))
+        process.exit(0);
+    }
+
+    tzOptions.fileStream = (fileStream = fs.createWriteStream(file, 'utf8')) as unknown as NodeJS.WriteStream;
   }
 
-  if (options.Y) {
-    const parts = options.Y.split(',');
+  if (options.y) {
+    const parts = options.y.split(',');
 
     if (parts.length === 1)
       tzOptions.minYear = tzOptions.maxYear = toInt(parts[0]);
@@ -129,6 +156,11 @@ zic tool stored in the given directory.${nl}\
 
   try {
     await writeTimezones(tzOptions);
+
+    if (fileStream) {
+      fileStream.close();
+      await new Promise<void>(resolve => fileStream.on('close', () => resolve()));
+    }
   }
   catch (err) {
     console.error(err);

@@ -11,7 +11,7 @@ export const DEFAULT_MAX_YEAR = 2050;
 
 export enum TzFormat { JSON, JAVASCRIPT, TYPESCRIPT, TEXT }
 export enum TzPresets { NONE, SMALL, LARGE, LARGE_ALT }
-export enum TzPhase { DOWNLOAD, EXTRACT, PARSE, COMPILE, VALIDATE, COMPRESS, DONE }
+export enum TzPhase { DOWNLOAD, EXTRACT, PARSE, COMPILE, VALIDATE, REËNCODE, DONE }
 export enum TzMessageLevel { INFO, LOG, WARN, ERROR }
 
 export type TzCallback = (
@@ -176,9 +176,9 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
 
     if ((progress || options.fixRollbacks) &&
         zone.findCalendarRollbacks(options.fixRollbacks, progress) === Rollbacks.ROLLBACKS_REMAIN)
-      report(TzPhase.COMPRESS, TzMessageLevel.ERROR, `*** Failed to fix calendar rollbacks in ${zoneId}`);
+      report(TzPhase.REËNCODE, TzMessageLevel.ERROR, `*** Failed to fix calendar rollbacks in ${zoneId}`);
 
-    report(TzPhase.COMPRESS, TzMessageLevel.INFO, `Compressing ${zoneId} \x1B[50G%s of %s`, i + 1, zoneList.length);
+    report(TzPhase.REËNCODE, TzMessageLevel.INFO, `Compressing ${zoneId} \x1B[50G%s of %s`, i + 1, zoneList.length);
 
     const ctt = zone.createCompactTransitionTable(options.fixRollbacks);
 
@@ -249,6 +249,7 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
           write();
 
         resolve();
+        return;
       }
 
       const delim = (i < zoneList.length - 1 ? ',' : '');
