@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import fs from 'fs';
 import { Command } from 'commander';
 import { DEFAULT_URL, getAvailableVersions } from './read-tzdb';

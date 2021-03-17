@@ -160,12 +160,7 @@ export class TzTransitionList extends Array<TzTransition> {
   createCompactTransitionTable(fixCalendarRollbacks = false): string {
     let sb = '';
     const baseOffset = this[0].utcOffset;
-    let nominalStdOffset = 0;
-    let nominalDstOffset = 0;
-    let finalStdRule: TzRule;
-    let finalDstRule: TzRule;
-
-    [nominalStdOffset, nominalDstOffset, finalStdRule, finalDstRule] =
+    const [nominalStdOffset, nominalDstOffset, finalStdRule, finalDstRule] =
       this.findFinalRulesAndOffsets();
 
     sb += formatUtcOffset(baseOffset, true) + ' ' + formatUtcOffset(nominalStdOffset, true) +
