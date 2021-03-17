@@ -11,7 +11,7 @@ export const DEFAULT_MAX_YEAR = 2050;
 
 export enum TzFormat { JSON, JAVASCRIPT, TYPESCRIPT, TEXT }
 export enum TzPresets { NONE, SMALL, LARGE, LARGE_ALT }
-export enum TzPhase { DOWNLOAD, EXTRACT, PARSE, COMPILE, VALIDATE, COMPRESS }
+export enum TzPhase { DOWNLOAD, EXTRACT, PARSE, COMPILE, VALIDATE, COMPRESS, DONE }
 export enum TzMessageLevel { INFO, LOG, WARN, ERROR }
 
 export type TzCallback = (
@@ -144,10 +144,8 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
 
   if (options.singleZone)
     zoneMap = new Map().set(options.singleZone, await compiler.compile(options.singleZone, minYear, maxYear));
-  else {
+  else
     zoneMap = await compiler.compileAll(minYear, maxYear, progress);
-    report(TzPhase.COMPILE, TzMessageLevel.LOG, '');
-  }
 
   let zoneList = Array.from(zoneMap.keys());
   const sortKey = (zoneId: string): string => zoneMap.get(zoneId).aliasFor ? zoneId : '*' + zoneId;
@@ -180,7 +178,7 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
         zone.findCalendarRollbacks(options.fixRollbacks, progress) === Rollbacks.ROLLBACKS_REMAIN)
       report(TzPhase.COMPRESS, TzMessageLevel.ERROR, `*** Failed to fix calendar rollbacks in ${zoneId}`);
 
-    report(TzPhase.COMPRESS, TzMessageLevel.INFO, `Compressing ${zoneId} \x1B[40G%s of %s`, i + 1, zoneList.length);
+    report(TzPhase.COMPRESS, TzMessageLevel.INFO, `Compressing ${zoneId} \x1B[50G%s of %s`, i + 1, zoneList.length);
 
     const ctt = zone.createCompactTransitionTable(options.fixRollbacks);
 
@@ -218,6 +216,8 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
 
   if (duplicatesFound)
     zoneList.sort((a, b) => compareStrings(sortKey(a), sortKey(b)));
+
+  report(TzPhase.DONE);
 
   if (options.format === TzFormat.JSON)
     write('{');
@@ -289,7 +289,9 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
       write();
       write(`Object.freeze(${variableName});`);
 
-      if (options.format === TzFormat.TYPESCRIPT)
+      if (options.format === TzFormat.JAVASCRIPT)
+        write(`module.exports = ${variableName};`);
+      else if (options.format === TzFormat.TYPESCRIPT)
         write(`export default ${variableName};`);
     }
   }

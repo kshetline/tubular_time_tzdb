@@ -39,7 +39,7 @@ export class TzCompiler {
         deferred.push(zoneId);
 
       if (progress)
-        progress(TzPhase.COMPILE, TzMessageLevel.INFO, zoneId + ': \x1B[40G%s of %s', compiledZones.size, zoneIds.length);
+        progress(TzPhase.COMPILE, TzMessageLevel.INFO, zoneId + ': \x1B[50G%s of %s', compiledZones.size, zoneIds.length);
     }
 
     for (const zoneId of deferred) {

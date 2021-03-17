@@ -2,7 +2,7 @@
 import fs from 'fs';
 import { Command } from 'commander';
 import { DEFAULT_URL, getAvailableVersions } from './read-tzdb';
-import { toInt } from '@tubular/util';
+import { padLeft, toInt } from '@tubular/util';
 import { DEFAULT_MAX_YEAR, DEFAULT_MIN_YEAR, TzFormat, TzMessageLevel, TzOutputOptions, TzPhase, TzPresets, writeTimezones } from './tz-writer';
 const { version } = require('../package.json');
 
@@ -38,88 +38,100 @@ zic tool stored in the given directory.${nl}\
   .arguments('[outfile]')
   .parse(process.argv).opts();
 
-if (options.list) {
-  (async function (): Promise<void> {
-    const list = await getAvailableVersions();
+(async function (): Promise<void> {
+  if (options.list) {
+    try {
+      (await getAvailableVersions()).forEach(v => console.log(v));
+    }
+    catch (err) {
+      console.error(err);
+      process.exit(1);
+    }
 
-    list.forEach(v => console.log(v));
-    process.exit(0);
-  })();
-}
-
-let lastWasInfo = false;
-
-function progress(_phase?: TzPhase, level?: TzMessageLevel, message?: string, step?: number, stepCount?: number): void {
-  const args: (string | number)[] = [message];
-
-  if (step) {
-    args.push(step);
-
-    if (stepCount)
-      args.push(stepCount);
+    return;
   }
 
-  if (lastWasInfo)
-    process.stdout.write('\x1B[A\x1B[K');
+  let lastWasInfo = false;
 
-  if (level === TzMessageLevel.INFO && !options.Q)
-    console.info(...args);
-  else if (level === TzMessageLevel.LOG && !options.Q)
-    console.log(...args);
-  else if (level === TzMessageLevel.WARN)
-    console.warn(...args);
-  else if (level === TzMessageLevel.ERROR)
-    console.error(...args);
+  function progress(phase?: TzPhase, level?: TzMessageLevel, message?: string, step?: number, stepCount?: number): void {
+    const args: (string | number)[] = [message ?? ''];
 
-  lastWasInfo = level === TzMessageLevel.INFO;
-}
+    if (phase != null)
+      args[0] = TzPhase[phase] + (args[0] ? ': ' + args[0] : '');
 
-const tzOptions: TzOutputOptions = {
-  callback: progress,
-  filtered: options.F,
-  fixRollbacks: options.R,
-  roundToMinutes: options.M,
-  singleZone: options.S,
-  systemV: options.systemv,
-  urlOrVersion: options.url,
-  zoneInfoDir: options.Z
-};
+    if (step) {
+      args.push(padLeft(step, 3));
 
-let file = '';
+      if (stepCount)
+        args.push(stepCount);
+    }
 
-if (program.args.length > 0) {
-  file = program.args[0];
-  tzOptions.fileStream = fs.createWriteStream(file, 'utf8') as unknown as NodeJS.WriteStream;
-}
+    if (lastWasInfo)
+      process.stdout.write('\x1B[A\x1B[K');
 
-if (options.javascript || (!options.typescript && !options.text && file.endsWith('.js')))
-  tzOptions.format = TzFormat.JAVASCRIPT;
-else if (options.typescript || (!options.text && file.endsWith('.ts')))
-  tzOptions.format = TzFormat.TYPESCRIPT;
-else if (options.text || file.endsWith('.txt'))
-  tzOptions.format = TzFormat.TEXT;
+    if (level === TzMessageLevel.INFO && !options.Q)
+      console.info(...args);
+    else if (level === TzMessageLevel.LOG && !options.Q)
+      console.log(...args);
+    else if (level === TzMessageLevel.WARN)
+      console.warn(...args);
+    else if (level === TzMessageLevel.ERROR)
+      console.error(...args);
 
-if (options.Y) {
-  const parts = options.Y.split(',');
-
-  if (parts.length === 1)
-    tzOptions.minYear = tzOptions.maxYear = toInt(parts[0]);
-  else if (parts.length === 2) {
-    tzOptions.minYear = parts[0] ? toInt(parts[0], DEFAULT_MIN_YEAR) : undefined;
-    tzOptions.maxYear = parts[1] ? toInt(parts[1], DEFAULT_MAX_YEAR) : undefined;
+    lastWasInfo = level === TzMessageLevel.INFO;
   }
-}
 
-if (options.small)
-  tzOptions.preset = TzPresets.SMALL;
-else if (options.large)
-  tzOptions.preset = TzPresets.LARGE;
-else if (options.largeAlt)
-  tzOptions.preset = TzPresets.LARGE_ALT;
+  const tzOptions: TzOutputOptions = {
+    callback: progress,
+    filtered: options.F,
+    fixRollbacks: options.R,
+    roundToMinutes: options.M,
+    singleZone: options.S,
+    systemV: options.systemv,
+    urlOrVersion: options.url,
+    zoneInfoDir: options.Z
+  };
 
-if (!options.list) {
-  writeTimezones(tzOptions).catch(err => {
+  if (options.small)
+    tzOptions.preset = TzPresets.SMALL;
+  else if (options.large)
+    tzOptions.preset = TzPresets.LARGE;
+  else if (options.largeAlt)
+    tzOptions.preset = TzPresets.LARGE_ALT;
+
+  let file = '';
+
+  if (program.args[0] !== '-')
+    file = program.args[0] || ('timezone' + (['s', '-small', '-large', '-large-alt'][tzOptions.preset ?? 0]));
+
+  if (options.javascript || (!options.typescript && !options.text && file.endsWith('.js')))
+    tzOptions.format = TzFormat.JAVASCRIPT;
+  else if (options.typescript || (!options.text && file.endsWith('.ts')))
+    tzOptions.format = TzFormat.TYPESCRIPT;
+  else if (options.text || file.endsWith('.txt'))
+    tzOptions.format = TzFormat.TEXT;
+
+  if (file && !file.includes('.')) {
+    file += ['.json', '.js', '.ts', '.txt'][tzOptions.format ?? 0];
+    tzOptions.fileStream = fs.createWriteStream(file, 'utf8') as unknown as NodeJS.WriteStream;
+  }
+
+  if (options.Y) {
+    const parts = options.Y.split(',');
+
+    if (parts.length === 1)
+      tzOptions.minYear = tzOptions.maxYear = toInt(parts[0]);
+    else if (parts.length === 2) {
+      tzOptions.minYear = parts[0] ? toInt(parts[0], DEFAULT_MIN_YEAR) : undefined;
+      tzOptions.maxYear = parts[1] ? toInt(parts[1], DEFAULT_MAX_YEAR) : undefined;
+    }
+  }
+
+  try {
+    await writeTimezones(tzOptions);
+  }
+  catch (err) {
     console.error(err);
     process.exit(1);
-  });
-}
+  }
+})();

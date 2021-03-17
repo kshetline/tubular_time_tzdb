@@ -34,7 +34,7 @@ export async function getByUrlOrVersion(urlOrVersion?: string, progress?: TzCall
   }
 
   if (progress)
-    progress(TzPhase.DOWNLOAD, TzMessageLevel.INFO, `Downloading`);
+    progress(TzPhase.DOWNLOAD, TzMessageLevel.INFO);
 
   const data = await requestBinary(url, { headers: { 'User-Agent': 'curl/7.64.1' }, autoDecompress: true });
   const extract = tar.extract({ allowUnknownFormat: true });

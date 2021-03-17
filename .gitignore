@@ -37,6 +37,8 @@ testem.log
 /.nyc_output
 *.tgz
 foo.*
+timezones.*
+timezone-*.*
 
 # e2e
 /e2e/*.js
