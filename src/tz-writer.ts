@@ -1,7 +1,8 @@
 import { IanaZonesAndRulesParser } from './iana-zones-and-rules-parser';
 import { appendPopulationAndCountries, getPopulation, getPopulationAndCountries } from './population-and-country-data';
-import ttime from '@tubular/time';
-import { compareStrings } from '@tubular/util';
+import { abs } from '@tubular/math';
+import ttime, { DateTime } from '@tubular/time';
+import { compareStrings, toNumber } from '@tubular/util';
 import { TzCompiler } from './tz-compiler';
 import { Rollbacks, TzTransitionList } from './tz-transition-list';
 import { Writable } from 'stream';
@@ -232,9 +233,28 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
     write();
   }
 
+  const leaps = parser.getLeapSeconds();
+
   if (options.format !== TzFormat.TEXT) {
     write(`  ${iqt}version${iqt}: ${qt}${version}${qt},`);
     write(`  ${iqt}years${iqt}: ${qt}${minYear}-${maxYear}${qt},`);
+
+    if (leaps)
+      write(`  ${iqt}leapSeconds${iqt}: ${qt}${leaps}${qt},`);
+  }
+  else if (leaps && !options.singleZone) {
+    write('----------- Leap seconds -----------');
+
+    let deltaTAI = 10;
+
+    leaps.split(/\s+/).map(day => toNumber(day)).forEach(day => {
+      deltaTAI += (day > 0 ? 1 : -1);
+      write(new DateTime(abs(day) * 86400000 - 1000, 'UTC').format('MMM DD, Y HH:mm:ss')
+        .replace(/:59$/, day > 0 ? ':60' : ':58') + ` TAI = UTC + ${deltaTAI}`
+        + (day < 0 ? ' (negative leap second)' : ''));
+    });
+
+    write();
   }
 
   for (let i = 0; i < zoneList.length; ++i) {

@@ -131,7 +131,6 @@ async function getUserInput(): Promise<string> {
     file += ['.json', '.js', '.ts', '.txt'][tzOptions.format ?? 0];
 
     if (!options.o && fs.existsSync(file)) {
-      console.log(options);
       process.stdout.write(`File "${file}" already exists. Overwrite it? (y/N)? `);
 
       const response = await getUserInput();
@@ -160,6 +159,7 @@ async function getUserInput(): Promise<string> {
     if (fileStream) {
       fileStream.close();
       await new Promise<void>(resolve => fileStream.on('close', () => resolve()));
+      process.exit(0);
     }
   }
   catch (err) {

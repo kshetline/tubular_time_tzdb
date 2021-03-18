@@ -4,9 +4,11 @@ import { Readable } from 'stream';
 import tar from 'tar-stream';
 import { URL } from 'url';
 import { TzCallback, TzMessageLevel, TzPhase } from './tz-writer';
+import { asLines, toNumber } from '@tubular/util';
 
 export interface TzData {
   version: string;
+  leapSeconds?: string;
   sources: Record<string, string>;
 }
 
@@ -15,6 +17,8 @@ const URL_TEMPLATE_FOR_VERSION = 'https://data.iana.org/time-zones/releases/tzda
 const ALL_RELEASES = 'ftp://ftp.iana.org/tz/releases/';
 const TZ_SOURCE_FILES = new Set(['africa', 'antarctica', 'asia', 'australasia', 'europe', 'northamerica',
                                  'pacificnew', 'southamerica', 'backward', 'etcetera', 'systemv']);
+const TZ_EXTENDED_SOURCE_FILES = new Set(TZ_SOURCE_FILES).add('leap-seconds.list').add('version');
+const NTP_BASE = -2_208_988_800;
 
 function makeError(error: any): Error {
   return error instanceof Error ? error : new Error(error.toString());
@@ -45,7 +49,7 @@ export async function getByUrlOrVersion(urlOrVersion?: string, progress?: TzCall
   extract.on('entry', (header, stream, next) => {
     const sourceName = header.name;
 
-    if (!error && (TZ_SOURCE_FILES.has(sourceName) || sourceName === 'version')) {
+    if (!error && TZ_EXTENDED_SOURCE_FILES.has(sourceName)) {
       let data = '';
 
       if (progress && sourceName !== 'version')
@@ -59,6 +63,12 @@ export async function getByUrlOrVersion(urlOrVersion?: string, progress?: TzCall
 
           if (progress && result.version)
             progress(TzPhase.EXTRACT, TzMessageLevel.INFO, `tz database version ${result.version}`);
+        }
+        else if (sourceName === 'leap-seconds.list') {
+          const lines = asLines(data).filter(line => line && !line.startsWith('#'));
+          const leaps = lines.map(line => line.trim().split(/\s+/).map(n => toNumber(n))).map(a => [(a[0] + NTP_BASE) / 86400, a[1]]);
+
+          result.leapSeconds = leaps.map((a, i) => i === 0 ? '' : `${a[0] * (a[1] >= leaps[i - 1][1] ? 1 : -1)}`).join(' ').trim();
         }
         else
           result.sources[sourceName] = data;
