@@ -8,7 +8,7 @@
   },
   "scripts": {
     "build": "tsc && chmod +x ./dist/cli.js",
-    "prepublishOnly": "npm run build",
+    "prepack": "npm run build",
     "lint": "eslint 'src/**/*.ts' '**/*.cjs'",
     "test": "TS_NODE_FILES=true nyc --reporter=html mocha --require ts-node/register src/**/*.spec.ts"
   },

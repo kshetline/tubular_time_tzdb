@@ -13,6 +13,9 @@ export interface TzData {
   sources: Record<string, string>;
 }
 
+// Get additional data from https://www.iers.org/IERS/EN/DataProducts/EarthOrientationData/eop.html
+// As ΔT = 32.184 (for TDT - TAI) + 37 (for TAI - UTC) - (UT1-UTC)
+// One value per year, starting at 2020.
 // TODO: Perhaps extract from a remote data source later
 const deltaTs = '69.36 69.36';
 
