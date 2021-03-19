@@ -15,6 +15,7 @@ export class IanaZonesAndRulesParser {
   private readonly zoneAliases = new Map<string, string>();
   private readonly ruleSetMap = new Map<string, TzRuleSet>();
 
+  private deltaTs: string;
   private leapSeconds: string;
   private lineNo = 0;
 
@@ -48,6 +49,7 @@ export class IanaZonesAndRulesParser {
       // Uncomment the commented-out rules and timezones in the systemv file
       tzData.sources.systemv = tzData.sources.systemv.replace(/## (Rule\s+SystemV|Zone)/g, '$1');
 
+    this.deltaTs = tzData.deltaTs;
     this.leapSeconds = tzData.leapSeconds;
     this.parseSources(tzData);
 
@@ -97,6 +99,10 @@ export class IanaZonesAndRulesParser {
 
   getRuleSet(rulesName: string): TzRuleSet {
     return this.ruleSetMap.get(rulesName);
+  }
+
+  getDeltaTs(): string {
+    return this.deltaTs;
   }
 
   getLeapSeconds(): string {

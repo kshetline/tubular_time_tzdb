@@ -1,6 +1,6 @@
 import { IanaZonesAndRulesParser } from './iana-zones-and-rules-parser';
 import { appendPopulationAndCountries, getPopulation, getPopulationAndCountries } from './population-and-country-data';
-import { abs } from '@tubular/math';
+import { abs, min } from '@tubular/math';
 import ttime, { DateTime } from '@tubular/time';
 import { compareStrings, toNumber } from '@tubular/util';
 import { TzCompiler } from './tz-compiler';
@@ -233,28 +233,51 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
     write();
   }
 
-  const leaps = parser.getLeapSeconds();
+  const deltaTs = parser.getDeltaTs()?.trim();
+  const leaps = parser.getLeapSeconds()?.trim();
 
   if (options.format !== TzFormat.TEXT) {
     write(`  ${iqt}version${iqt}: ${qt}${version}${qt},`);
     write(`  ${iqt}years${iqt}: ${qt}${minYear}-${maxYear}${qt},`);
 
+    if (deltaTs)
+      write(`  ${iqt}deltaTs${iqt}: ${qt}${deltaTs}${qt},`);
+
     if (leaps)
       write(`  ${iqt}leapSeconds${iqt}: ${qt}${leaps}${qt},`);
   }
-  else if (leaps && !options.singleZone) {
-    write('----------- Leap seconds -----------');
+  else if (!options.singleZone) {
+    if (deltaTs) {
+      write('----------- Delta T -----------');
 
-    let deltaTAI = 10;
+      let lines = '';
 
-    leaps.split(/\s+/).map(day => toNumber(day)).forEach(day => {
-      deltaTAI += (day > 0 ? 1 : -1);
-      write(new DateTime(abs(day) * 86400000 - 1000, 'UTC').format('MMM DD, Y HH:mm:ss')
-        .replace(/:59$/, day > 0 ? ':60' : ':58') + ` TAI = UTC + ${deltaTAI}`
-        + (day < 0 ? ' (negative leap second)' : ''));
-    });
+      deltaTs.split(/\s+/).forEach((dt, i, dts) => {
+        if (i % 10 === 0)
+          lines += (2020 + i).toString() +
+            (i === dts.length - 1 ? '     ' : '-' + (2020 + i + min(dts.length - i - 1, 9))) + ':';
 
-    write();
+        lines += ' ' + dt + (i < dts.length - 1 ? ',' : '');
+        lines += (i === dts.length - 1 || (i + 1) % 10 === 0 ? '\n' : '');
+      });
+
+      write(lines);
+    }
+
+    if (leaps) {
+      write('----------- Leap seconds -----------');
+
+      let deltaTAI = 10;
+
+      leaps.split(/\s+/).map(day => toNumber(day)).forEach(day => {
+        deltaTAI += (day > 0 ? 1 : -1);
+        write(new DateTime(abs(day) * 86400000 - 1000, 'UTC').format('MMM DD, Y HH:mm:ss')
+          .replace(/:59$/, day > 0 ? ':60' : ':58') + ` TAI = UTC + ${deltaTAI}`
+          + (day < 0 ? ' (negative leap second)' : ''));
+      });
+
+      write();
+    }
   }
 
   for (let i = 0; i < zoneList.length; ++i) {

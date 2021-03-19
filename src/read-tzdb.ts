@@ -9,8 +9,12 @@ import { asLines, toNumber } from '@tubular/util';
 export interface TzData {
   version: string;
   leapSeconds?: string;
+  deltaTs?: string;
   sources: Record<string, string>;
 }
+
+// TODO: Perhaps extract from a remote data source later
+const deltaTs = '69.36 69.36';
 
 export const DEFAULT_URL = 'https://www.iana.org/time-zones/repository/tzdata-latest.tar.gz';
 const URL_TEMPLATE_FOR_VERSION = 'https://data.iana.org/time-zones/releases/tzdata{version}.tar.gz';
@@ -43,7 +47,7 @@ export async function getByUrlOrVersion(urlOrVersion?: string, progress?: TzCall
   const data = await requestBinary(url, { headers: { 'User-Agent': 'curl/7.64.1' }, autoDecompress: true });
   const extract = tar.extract({ allowUnknownFormat: true });
   const stream = Readable.from(data);
-  const result: TzData = { version: requestedVersion || 'unknown', sources: {} };
+  const result: TzData = { version: requestedVersion || 'unknown', deltaTs, sources: {} };
   let error: any;
 
   extract.on('entry', (header, stream, next) => {
