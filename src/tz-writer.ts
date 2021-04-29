@@ -10,7 +10,7 @@ import { Writable } from 'stream';
 export const DEFAULT_MIN_YEAR = 1900;
 export const DEFAULT_MAX_YEAR = 2050;
 
-export enum TzFormat { JSON, JAVASCRIPT, TYPESCRIPT, TEXT }
+export enum TzFormat { BINARY, JSON, JAVASCRIPT, TYPESCRIPT, TEXT }
 export enum TzPresets { NONE, SMALL, LARGE, LARGE_ALT }
 export enum TzPhase { DOWNLOAD, EXTRACT, PARSE, COMPILE, VALIDATE, REËNCODE, DONE }
 export enum TzMessageLevel { INFO, LOG, WARN, ERROR }
@@ -38,6 +38,7 @@ export interface TzOptions {
 }
 
 export interface TzOutputOptions extends TzOptions {
+  directory?: string;
   fileStream?: NodeJS.WriteStream,
   format?: TzFormat
 }

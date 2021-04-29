@@ -27,6 +27,8 @@ Options are available for limiting the span of years covered, adjusting and filt
 ## CLI interface
 
 ```text
+Usage: tzc [options] [output_file_name]
+
 Downloads and compiles IANA timezone data, converting to text or @tubular/time-compatible data.
 
 Options:

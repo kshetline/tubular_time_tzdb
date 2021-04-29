@@ -1,9 +1,6 @@
-import * as chai from 'chai';
-// @ts-ignore
+import chai, { expect } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import { getAvailableVersions, getByUrlOrVersion, getLatest } from './read-tzdb';
-
-const { expect } = chai;
 
 chai.use(chaiAsPromised);
 chai.should();

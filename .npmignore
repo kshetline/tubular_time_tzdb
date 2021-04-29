@@ -12,3 +12,4 @@
 *.spec.js
 *.tgz
 foo.*
+/zoneinfo
