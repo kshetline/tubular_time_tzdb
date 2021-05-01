@@ -1,5 +1,5 @@
 import { padLeft, toInt } from '@tubular/util';
-import { calendar, ClockType, DAYS, indexOfFailNotFound, MONTHS, parseAtTime, parseTimeOffset } from './tz-util';
+import { calendar, ClockType, DAYS, formatPosixOffset, indexOfFailNotFound, MONTHS, parseAtTime, parseTimeOffset } from './tz-util';
 import { div_rd, max, min } from '@tubular/math';
 import { TzTransitionList } from './tz-transition-list';
 import ttime, { DateTime, Timezone } from '@tubular/time';
@@ -85,6 +85,46 @@ export class TzRule {
   toCompactTailRule(): string {
     return [this.startYear, this.month, this.dayOfMonth, this.dayOfWeek, this.atHour + ':' + this.atMinute,
             this.atType, div_rd(this.save, 60)].join(' ');
+  }
+
+  toPosixRule(offset?: number, stdName?: string, dstRule?: TzRule, dstName?: string): string {
+    if (this.save !== 0 && dstRule && dstRule.save === 0)
+      return dstRule.toPosixRule(offset, dstName, this, stdName);
+
+    let tz = (/^[a-z]+$/i.test(stdName) ? stdName : '<' + stdName + '>') + formatPosixOffset(-offset);
+
+    if (!dstRule)
+      return tz;
+
+    tz += /^[a-z]+$/i.test(dstName) ? dstName : '<' + dstName + '>';
+
+    if (dstRule.save !== 3600) {
+      offset += dstRule.save;
+      tz += formatPosixOffset(-offset);
+    }
+
+    if (this.dayOfMonth < 0 || dstRule.dayOfMonth < 0 || this.dayOfWeek < 0 || dstRule.dayOfWeek < 0)
+      return tz;
+
+    let hour = dstRule.atHour * 3600 + dstRule.atMinute * 60;
+    let nth = dstRule.dayOfMonth === 0 ? 5 : div_rd(dstRule.dayOfMonth - 1, 7) + 1;
+
+    if (dstRule.atType === ClockType.CLOCK_TYPE_UTC)
+      hour += offset;
+
+    tz += `,M${dstRule.month}.${nth}.${dstRule.dayOfWeek - 1}/${formatPosixOffset(hour)}`;
+
+    hour = this.atHour * 3600 + this.atMinute * 60;
+    nth = this.dayOfMonth === 0 ? 5 : div_rd(this.dayOfMonth - 1, 7) + 1;
+
+    if (this.atType === ClockType.CLOCK_TYPE_UTC)
+      hour += offset;
+    else if (this.atType === ClockType.CLOCK_TYPE_STD)
+      hour += dstRule.save * 60;
+
+    tz += `,M${this.month}.${nth}.${this.dayOfWeek - 1}/${formatPosixOffset(hour)}`;
+
+    return tz;
   }
 
   toString(): string {

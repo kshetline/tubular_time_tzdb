@@ -1,6 +1,6 @@
-import { toInt, toNumber } from '@tubular/util';
+import { padLeft, toInt, toNumber } from '@tubular/util';
 import ttime, { Calendar, DateTime, parseTimeOffset as pto, Timezone } from '@tubular/time';
-import { div_rd } from '@tubular/math';
+import { div_rd, div_tt0 } from '@tubular/math';
 import LAST = ttime.LAST;
 
 export enum ClockType { CLOCK_TYPE_WALL, CLOCK_TYPE_STD, CLOCK_TYPE_UTC }
@@ -242,6 +242,30 @@ export function parseUntilTime(s: string, roundToMinutes = false): number[] {
       }
     }
   }
+
+  return result;
+}
+
+export function formatPosixOffset(offsetSeconds: number): string {
+  if (offsetSeconds == null)
+    return '?';
+
+  let result = offsetSeconds < 0 ? '-' : '';
+
+  offsetSeconds = Math.abs(offsetSeconds);
+
+  const hours = div_tt0(offsetSeconds, 3600);
+  offsetSeconds -= hours * 3600;
+  const minutes = div_tt0(offsetSeconds, 60);
+  offsetSeconds -= minutes * 60;
+
+  if (minutes === 0 && offsetSeconds === 0)
+    return result + hours;
+
+  result += hours + ':' + padLeft(minutes, 2, '0');
+
+  if (offsetSeconds !== 0)
+    result += ':' + padLeft(offsetSeconds, 2, '0');
 
   return result;
 }
