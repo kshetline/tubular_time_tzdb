@@ -9,6 +9,8 @@ chai.should();
 
 describe('Writing binary zoneinfo files', () => {
   it('should write something', async function () {
+    this.timeout(10000);
+
     const parser = new IanaZonesAndRulesParser(false);
     await parser.parseFromOnline(true);
     const compiler = new TzCompiler(parser);

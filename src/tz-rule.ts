@@ -123,6 +123,7 @@ export class TzRule {
       hour += dstRule.save * 60;
 
     tz += `,M${this.month}.${nth}.${this.dayOfWeek - 1}/${formatPosixOffset(hour)}`;
+    tz = tz.replace(/\/2\b/g, '');
 
     return tz;
   }

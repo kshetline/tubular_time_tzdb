@@ -433,7 +433,7 @@ export class TzTransitionList extends Array<TzTransition> {
     return true;
   }
 
-  private findFinalRulesAndOffsets(): [number, number, TzRule, TzRule] {
+  findFinalRulesAndOffsets(): [number, number, TzRule, TzRule, string, string] {
     let nominalStdOffset = 0;
     let nominalDstOffset = 0;
     let finalStdRule: TzRule;
@@ -442,6 +442,8 @@ export class TzTransitionList extends Array<TzTransition> {
     let lookingForStdRule = true;
     let lookingForDst = true;
     let lastRuleSet: string = null;
+    let stdName: string = null;
+    let dstName: string = null;
 
     if (this.lastZoneRec != null && this.lastZoneRec.rules == null) {
       nominalStdOffset = this.lastZoneRec.utcOffset;
@@ -473,16 +475,18 @@ export class TzTransitionList extends Array<TzTransition> {
 
       if (lookingForStdRule && tzt.dstOffset === 0 && tzt.rule.endYear === Number.MAX_SAFE_INTEGER) {
         finalStdRule = tzt.rule;
+        stdName = tzt.name;
         lookingForStdRule = false;
       }
 
       if (lookingForDst && tzt.dstOffset !== 0 && tzt.rule.endYear === Number.MAX_SAFE_INTEGER) {
         nominalDstOffset = tzt.dstOffset;
         finalDstRule = tzt.rule;
+        dstName = tzt.name;
         lookingForDst = false;
       }
     }
 
-    return [nominalStdOffset, nominalDstOffset, finalStdRule, finalDstRule];
+    return [nominalStdOffset, nominalDstOffset, finalStdRule, finalDstRule, stdName, dstName];
   }
 }
