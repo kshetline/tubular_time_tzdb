@@ -5,27 +5,25 @@ import { last } from '@tubular/util';
 import { formatPosixOffset, toBase60 } from './tz-util';
 import { TzTransition } from './tz-transition';
 import { DateTime } from '@tubular/time';
+import { max } from '@tubular/math';
 
 const Y1800 = new DateTime('1800-01-01Z').utcSeconds;
-const Y1900 = new DateTime('1900-01-01Z').utcSeconds;
 
 export async function writeZoneInfoFile(directory: string, transitions: TzTransitionList): Promise<void> {
   const zonePath = transitions.zoneId.split('/');
   directory = path.join(directory, ...zonePath.slice(0, zonePath.length - 1));
   await fs.mkdir(directory, { recursive: true });
   const fh = await fs.open(path.join(directory, last(zonePath)), 'w', 0o644);
-  const buf1 = createZoneInfoBuffer(transitions, 4, Y1900);
-  const buf2 = createZoneInfoBuffer(transitions, 8, Y1800);
+  const buf1 = createZoneInfoBuffer(transitions, 4);
+  const buf2 = createZoneInfoBuffer(transitions, 8);
 
   await fh.write(buf1);
   await fh.write(buf2);
   await fh.close();
-
-  console.log(transitions.findFinalRulesAndOffsets());
 }
 
-function createZoneInfoBuffer(transitions: TzTransitionList, dataSize: number, earliest: number): Buffer {
-  const uniqueOffsetList: { key: string, name: string }[] = [];
+function createZoneInfoBuffer(transitions: TzTransitionList, dataSize: number): Buffer {
+  const uniqueOffsetList: { key: string, name: string, trans: TzTransition }[] = [];
   const names = new Set<string>();
   const makeKey = (t: TzTransition): string => toBase60(t.utcOffset / 60) + '/' + toBase60(t.dstOffset / 60) +
     '/' + t.name;
@@ -33,16 +31,21 @@ function createZoneInfoBuffer(transitions: TzTransitionList, dataSize: number, e
   let topDiscarded = 0;
 
   for (const t of transitions) {
-    if (t.time < earliest || (dataSize === 4 && t.time < -0x8000000)) {
+    if (t.time < Y1800 || (dataSize === 4 && t.time < -0x80000000))
       ++discarded;
-      continue;
-    }
-    else if (dataSize === 4 && t.time > 0x7FFFFFFF) {
+    else
+      break;
+  }
+
+  for (let i = max(discarded - 1, 0); i < transitions.length; ++i) {
+    const t = transitions[i];
+
+    if (t.time > 0x7FFFFFFF) { // For now, discard data beyond 2038-01-19T03:14:07Z even when 8 bytes are available.
       ++topDiscarded;
       continue;
     }
 
-    const offset = { key: makeKey(t), name: t.name };
+    const offset = { key: makeKey(t), name: t.name, trans: t };
 
     if (!t.name)
       offset.name = formatPosixOffset(t.utcOffset);
@@ -57,8 +60,15 @@ function createZoneInfoBuffer(transitions: TzTransitionList, dataSize: number, e
   // Variable names tzh_timecnt, tzh_typecnt, etc. from https://man7.org/linux/man-pages/man5/tzfile.5.html
   const tzh_timecnt = transitions.length - discarded - topDiscarded;
   const tzh_typecnt = uniqueOffsetList.length;
-  const size = 20 + 6 * 4 + tzh_timecnt * (dataSize + 1) + tzh_typecnt * 6 + allNames.length
-    /* + tzh_leapcnt * 4 */ + allNames.length;
+  let size = 20 + 6 * 4 + tzh_timecnt * (dataSize + 1) + tzh_typecnt * 8 + allNames.length/* + tzh_leapcnt * 4 */;
+  let posixRule: string;
+
+  if (dataSize > 4) {
+    const [stdOffset, , finalStdRule, finalDstRule, stdName, dstName] = transitions.findFinalRulesAndOffsets();
+    posixRule = '\x0A' + finalStdRule.toPosixRule(stdOffset, stdName, finalDstRule, dstName) + '\x0A';
+    size += posixRule.length;
+  }
+
   const buf = Buffer.alloc(size, 0);
 
   buf.write('TZif2' + '\x00'.repeat(15), 0, 'ascii');
@@ -66,20 +76,44 @@ function createZoneInfoBuffer(transitions: TzTransitionList, dataSize: number, e
   buf.writeInt32BE(tzh_typecnt, 20);
   buf.writeInt32BE(tzh_typecnt, 24);
   buf.writeInt32BE(0, 28); // No leap second entries... yet.
-  buf.writeInt32BE(transitions.length - discarded, 32);
+  buf.writeInt32BE(tzh_timecnt, 32);
   buf.writeInt32BE(tzh_typecnt, 36);
   buf.writeInt32BE(allNames.length, 40);
 
   let offset = 44;
 
   for (let i = discarded; i < transitions.length - topDiscarded; ++i) {
+    const t = transitions[i];
+
     if (dataSize === 4)
-      buf.writeInt32BE(transitions[i].time, offset);
+      buf.writeInt32BE(t.time, offset);
     else
-      buf.writeBigInt64BE(BigInt(transitions[i].time), offset);
+      buf.writeBigInt64BE(BigInt(t.time), offset);
 
     offset += dataSize;
   }
+
+  for (let i = discarded; i < transitions.length - topDiscarded; ++i) {
+    const key = makeKey(transitions[i]);
+    buf.writeInt8(max(uniqueOffsetList.findIndex(os => os.key === key), 0), offset++);
+  }
+
+  for (const os of uniqueOffsetList) {
+    const name = '\x00' + (os.trans.name || formatPosixOffset(os.trans.utcOffset)) + '\x00';
+
+    buf.writeInt32BE(os.trans.utcOffset, offset);
+    offset += 4;
+    buf.writeUInt8(os.trans.dstOffset ? 1 : 0, offset++);
+    buf.writeUInt8(('\x00' + allNames).indexOf(name), offset++);
+  }
+
+  buf.write(allNames, offset, 'ascii');
+  offset += allNames.length;
+
+  /* Leap seconds would go here. */
+
+  if (posixRule)
+    buf.write(posixRule, size - posixRule.length);
 
   return buf;
 }
