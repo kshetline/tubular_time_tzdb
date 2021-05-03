@@ -37,6 +37,8 @@ function createZoneInfoBuffer(transitions: TzTransitionList, dataSize: number): 
       break;
   }
 
+  let pendingOffset: any = null;
+
   for (let i = max(discarded - 1, 0); i < transitions.length; ++i) {
     const t = transitions[i];
 
@@ -50,13 +52,35 @@ function createZoneInfoBuffer(transitions: TzTransitionList, dataSize: number): 
     if (!t.name)
       offset.name = formatPosixOffset(t.utcOffset);
 
-    if (!uniqueOffsetList.find(os => os.key === offset.key))
-      uniqueOffsetList.push(offset);
+    if (!uniqueOffsetList.find(os => os.key === offset.key)) {
+      // Holding off saving the offset info from before the first saved transition shouldn't be strictly
+      // necessary to create a valid file, nor the first standard time transition, but standard zic output
+      // seems to do this, so matching that behavior makes output validation easier.
+      if (i <= discarded - 1 + (pendingOffset ? 1 : 0)) {
+        if (pendingOffset) {
+          if (!uniqueOffsetList.find(os => os.key === pendingOffset.key))
+            uniqueOffsetList.push(pendingOffset);
 
-    names.add(offset.name);
+          names.add(pendingOffset.name);
+        }
+
+        pendingOffset = offset;
+      }
+      else {
+        uniqueOffsetList.push(offset);
+        names.add(offset.name);
+      }
+    }
   }
 
-  const allNames = uniqueOffsetList.map(os => os.name).join('\x00') + '\x00';
+  if (pendingOffset) {
+    if (!uniqueOffsetList.find(os => os.key === pendingOffset.key))
+      uniqueOffsetList.push(pendingOffset);
+
+    names.add(pendingOffset.name);
+  }
+
+  const allNames = Array.from(names).join('\x00') + '\x00';
   // Variable names tzh_timecnt, tzh_typecnt, etc. from https://man7.org/linux/man-pages/man5/tzfile.5.html
   const tzh_timecnt = transitions.length - discarded - topDiscarded;
   const tzh_typecnt = uniqueOffsetList.length;
@@ -111,6 +135,11 @@ function createZoneInfoBuffer(transitions: TzTransitionList, dataSize: number): 
   offset += allNames.length;
 
   /* Leap seconds would go here. */
+
+  if (tzh_typecnt > 1) {
+    buf.writeUInt8(1, offset + tzh_typecnt - 1);
+    buf.writeUInt8(1, offset + tzh_typecnt * 2 - 1);
+  }
 
   if (posixRule)
     buf.write(posixRule, size - posixRule.length);
