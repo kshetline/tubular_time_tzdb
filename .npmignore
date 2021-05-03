@@ -13,3 +13,4 @@
 *.tgz
 foo.*
 /zoneinfo
+/test-data

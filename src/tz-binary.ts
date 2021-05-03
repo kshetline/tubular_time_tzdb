@@ -56,7 +56,7 @@ function createZoneInfoBuffer(transitions: TzTransitionList, dataSize: number): 
       // Holding off saving the offset info from before the first saved transition shouldn't be strictly
       // necessary to create a valid file, nor the first standard time transition, but standard zic output
       // seems to do this, so matching that behavior makes output validation easier.
-      if (i <= discarded - 1 + (pendingOffset ? 1 : 0)) {
+      if (i <= discarded - 1 + (pendingOffset?.name === 'LMT' ? 1 : 0)) {
         if (pendingOffset) {
           if (!uniqueOffsetList.find(os => os.key === pendingOffset.key))
             uniqueOffsetList.push(pendingOffset);
@@ -89,8 +89,11 @@ function createZoneInfoBuffer(transitions: TzTransitionList, dataSize: number): 
 
   if (dataSize > 4) {
     const [stdOffset, , finalStdRule, finalDstRule, stdName, dstName] = transitions.findFinalRulesAndOffsets();
-    posixRule = '\x0A' + finalStdRule.toPosixRule(stdOffset, stdName, finalDstRule, dstName) + '\x0A';
-    size += posixRule.length;
+
+    if (finalStdRule) {
+      posixRule = '\x0A' + finalStdRule.toPosixRule(stdOffset, stdName, finalDstRule, dstName) + '\x0A';
+      size += posixRule.length;
+    }
   }
 
   const buf = Buffer.alloc(size, 0);

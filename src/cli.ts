@@ -11,11 +11,12 @@ const nl = '\n' + ' '.repeat(20);
 const options = program
   .name('tzc')
   .description(`Downloads and compiles IANA timezone data, converting to text or @tubular/time-compatible data.`)
-  .usage('[options] [output_file_name]')
+  .usage('[options] [output_file_name_or_directory]')
   .version(version, '-v, --version')
   .addHelpText('after', '  -,                  Use dash by itself to output to stdout.')
   .option('-5, --systemv', `Include the SystemV timezones from the systemv file by${nl}\
 uncommenting the commented-out zone descriptions.`)
+  .option('-b, --binary', 'Output binary files to directory, one file per timezone')
   .option('-f', `Filter out Etc/GMTxxxx and other timezones that are either${nl}\
 redundant or covered by options for creating fixed-offset timezones.`)
   .option('-j, --javascript', 'Output JavaScript instead of JSON.')
@@ -120,15 +121,27 @@ async function getUserInput(): Promise<string> {
   if (program.args[0] !== '-')
     file = program.args[0] || ('timezone' + (['s', '-small', '-large', '-large-alt'][tzOptions.preset ?? 0]));
 
-  if (options.javascript || (!options.typescript && !options.text && file.endsWith('.js')))
+  if (options.binary || (!options.javascript && !options.typescript && !options.text && !file.includes('.')))
+    tzOptions.format = TzFormat.BINARY;
+  else if (options.javascript || (!options.typescript && !options.text && file.endsWith('.js')))
     tzOptions.format = TzFormat.JAVASCRIPT;
   else if (options.typescript || (!options.text && file.endsWith('.ts')))
     tzOptions.format = TzFormat.TYPESCRIPT;
   else if (options.text || file.endsWith('.txt'))
     tzOptions.format = TzFormat.TEXT;
 
-  if (file && !file.includes('.')) {
-    file += ['.json', '.js', '.ts', '.txt'][tzOptions.format ?? 0];
+  if (tzOptions.format === TzFormat.BINARY) {
+    if (program.args[0] === '-') {
+      console.error('stdout option (-) is not valid for binary format');
+      process.exit(1);
+    }
+    else if (program.args[0])
+      tzOptions.directory = program.args[0];
+    else
+      tzOptions.directory = 'zoneinfo';
+  }
+  else if (file && !file.includes('.')) {
+    file += ['', '.json', '.js', '.ts', '.txt'][tzOptions.format ?? 0];
 
     if (!options.o && fs.existsSync(file)) {
       process.stdout.write(`File "${file}" already exists. Overwrite it? (y/N)? `);

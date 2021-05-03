@@ -6,6 +6,7 @@ import { compareStrings, toNumber } from '@tubular/util';
 import { TzCompiler } from './tz-compiler';
 import { Rollbacks, TzTransitionList } from './tz-transition-list';
 import { Writable } from 'stream';
+import { writeZoneInfoFile } from './tz-binary';
 
 export const DEFAULT_MIN_YEAR = 1900;
 export const DEFAULT_MAX_YEAR = 2050;
@@ -223,12 +224,12 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
 
   if (options.format === TzFormat.JSON)
     write('{');
-  else if (options.format !== TzFormat.TEXT) {
+  else if (options.format === TzFormat.JAVASCRIPT || options.format === TzFormat.TYPESCRIPT) {
     write('/* eslint-disable quote-props */');
     write('// noinspection SpellCheckingInspection');
     write(`const ${variableName} = /* trim-file-start */{ // ${comment}`);
   }
-  else {
+  else if (options.format === TzFormat.TEXT) {
     write(comment);
     write('-'.repeat(comment.length));
     write();
@@ -237,7 +238,7 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
   const deltaTs = parser.getDeltaTs()?.trim();
   const leaps = parser.getLeapSeconds()?.trim();
 
-  if (options.format !== TzFormat.TEXT) {
+  if (options.format !== TzFormat.BINARY && options.format !== TzFormat.TEXT) {
     write(`  ${iqt}version${iqt}: ${qt}${version}${qt},`);
     write(`  ${iqt}years${iqt}: ${qt}${minYear}-${maxYear}${qt},`);
 
@@ -247,7 +248,7 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
     if (leaps)
       write(`  ${iqt}leapSeconds${iqt}: ${qt}${leaps}${qt},`);
   }
-  else if (!options.singleZone) {
+  else if (options.format === TzFormat.TEXT && !options.singleZone) {
     if (deltaTs) {
       write('----------- Delta T -----------');
 
@@ -295,6 +296,10 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
         resolve();
         return;
       }
+      else if (options.format === TzFormat.BINARY) {
+        writeZoneInfoFile(options.directory, zone).then(() => resolve());
+        return;
+      }
 
       const delim = (i < zoneList.length - 1 ? ',' : '');
 
@@ -327,7 +332,7 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
     });
   }
 
-  if (options.format !== TzFormat.TEXT) {
+  if (options.format !== TzFormat.TEXT && options.format !== TzFormat.BINARY) {
     write('}' + (options.format !== TzFormat.JSON ? '/* trim-file-end */;' : ''));
 
     if (options.format !== TzFormat.JSON) {

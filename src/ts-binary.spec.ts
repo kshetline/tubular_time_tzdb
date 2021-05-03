@@ -1,21 +1,24 @@
 import chai, { expect } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
+import fc from 'filecompare';
 import { writeZoneInfoFile } from './tz-binary';
 import { IanaZonesAndRulesParser } from './iana-zones-and-rules-parser';
 import { TzCompiler } from './tz-compiler';
 
 chai.use(chaiAsPromised);
-chai.should();
 
 describe('Writing binary zoneinfo files', () => {
-  it('should write something', async function () {
-    this.timeout(10000);
+  it('should match America/New_York sample', async function () {
+    this.timeout(1500000);
+    this.slow(7500);
 
     const parser = new IanaZonesAndRulesParser(false);
-    await parser.parseFromOnline(true);
+    await parser.parseFromOnline('2021a', true);
     const compiler = new TzCompiler(parser);
-    const tz = await compiler.compile('America/New_York', 1800, 2088);
+    const tz = await compiler.compile('America/New_York', 1800, 2040);
     await writeZoneInfoFile('zoneinfo', tz);
-    expect(true).to.be.true;
+    await expect(new Promise<boolean>(resolve => {
+      fc('./zoneinfo/America/New_York', './test-data/New_York', result => resolve(result));
+    })).to.eventually.be.true;
   });
 });
