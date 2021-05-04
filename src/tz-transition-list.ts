@@ -63,7 +63,7 @@ export class TzTransitionList extends Array<TzTransition> {
         if (forayIntoNextDay !== 0 && progress && !warningShown) {
           const forayMinutes = div_rd(forayIntoNextDay, 60);
           const foraySeconds = forayIntoNextDay % 60;
-          progress(TzPhase.REËNCODE, TzMessageLevel.LOG,
+          progress(TzPhase.REENCODE, TzMessageLevel.LOG,
             `* ${this.zoneId}: ${before.format(DT_FORMAT)} rolls back to ${after.format(DT_FORMAT)}` +
             ` (${forayMinutes} minute${foraySeconds > 0 ? ', ' + foraySeconds + ' second' : ''} foray into next day)`);
           warningShown = true;
@@ -82,10 +82,10 @@ export class TzTransitionList extends Array<TzTransition> {
     if (warningShown) {
       if (fixRollbacks) {
         if (stillHasRollbacks)
-          progress(TzPhase.REËNCODE, TzMessageLevel.WARN,
+          progress(TzPhase.REENCODE, TzMessageLevel.WARN,
             `  *** ${this.zoneId} rollback${rollbackCount > 1 ? 's' : ''} NOT FIXED ***`);
         else
-          progress(TzPhase.REËNCODE, TzMessageLevel.LOG, '  * fixed *');
+          progress(TzPhase.REENCODE, TzMessageLevel.LOG, '  * fixed *');
       }
     }
 

@@ -37,8 +37,6 @@ function createZoneInfoBuffer(transitions: TzTransitionList, dataSize: number): 
       break;
   }
 
-  let pendingOffset: any = null;
-
   for (let i = max(discarded - 1, 0); i < transitions.length; ++i) {
     const t = transitions[i];
 
@@ -53,31 +51,9 @@ function createZoneInfoBuffer(transitions: TzTransitionList, dataSize: number): 
       offset.name = formatPosixOffset(t.utcOffset, true);
 
     if (!uniqueOffsetList.find(os => os.key === offset.key)) {
-      // Holding off saving the offset info from before the first saved transition shouldn't be strictly
-      // necessary to create a valid file, nor the first standard time transition, but standard zic output
-      // seems to do this, so matching that behavior makes output validation easier.
-      if (i <= discarded - 1 + (pendingOffset?.name === 'LMT' ? 1 : 0)) {
-        if (pendingOffset) {
-          if (!uniqueOffsetList.find(os => os.key === pendingOffset.key))
-            uniqueOffsetList.push(pendingOffset);
-
-          names.add(pendingOffset.name);
-        }
-
-        pendingOffset = offset;
-      }
-      else {
-        uniqueOffsetList.push(offset);
-        names.add(offset.name);
-      }
+      uniqueOffsetList.push(offset);
+      names.add(offset.name);
     }
-  }
-
-  if (pendingOffset) {
-    if (!uniqueOffsetList.find(os => os.key === pendingOffset.key))
-      uniqueOffsetList.push(pendingOffset);
-
-    names.add(pendingOffset.name);
   }
 
   const allNames = Array.from(names).join('\x00') + '\x00';

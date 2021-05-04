@@ -118,7 +118,7 @@ export class TzRule {
       date = 'J' + getDayNumber_SGC(1970, dstRule.month, dstRule.dayOfMonth);
     else {
       nth = dstRule.dayOfMonth === 0 ? 5 : div_rd(dstRule.dayOfMonth - 1, 7) + 1;
-      date = `,M${dstRule.month}.${nth}.${dstRule.dayOfWeek - 1}`;
+      date = `M${dstRule.month}.${nth}.${dstRule.dayOfWeek - 1}`;
     }
 
     tz += `,${date}/${formatPosixOffset(hour)}`;
@@ -134,10 +134,10 @@ export class TzRule {
       date = 'J' + (getDayNumber_SGC(1970, this.month, this.dayOfMonth) + 1);
     else {
       nth = this.dayOfMonth === 0 ? 5 : div_rd(this.dayOfMonth - 1, 7) + 1;
-      date = `,M${this.month}.${nth}.${this.dayOfWeek - 1}`;
+      date = `M${this.month}.${nth}.${this.dayOfWeek - 1}`;
     }
 
-    tz += `,M${date}/${formatPosixOffset(hour)}`;
+    tz += `,${date}/${formatPosixOffset(hour)}`;
     tz = tz.replace(/\/2\b/g, '');
 
     return tz;
