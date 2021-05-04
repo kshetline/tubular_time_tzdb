@@ -2,7 +2,7 @@ import { padLeft, toInt } from '@tubular/util';
 import { calendar, ClockType, DAYS, formatPosixOffset, indexOfFailNotFound, MONTHS, parseAtTime, parseTimeOffset } from './tz-util';
 import { div_rd, max, min } from '@tubular/math';
 import { TzTransitionList } from './tz-transition-list';
-import ttime, { DateTime, Timezone } from '@tubular/time';
+import ttime, { DateTime, getDayNumber_SGC, Timezone } from '@tubular/time';
 import { TzTransition } from './tz-transition';
 import { TzCompiler, ZoneProcessingContext } from './tz-compiler';
 import LAST = ttime.LAST;
@@ -103,26 +103,41 @@ export class TzRule {
       tz += formatPosixOffset(-offset);
     }
 
-    if (this.dayOfMonth < 0 || dstRule.dayOfMonth < 0 || this.dayOfWeek < 0 || dstRule.dayOfWeek < 0)
+    // No POSIX representation for "on or before" a date, only "on or after".
+    if (this.dayOfMonth < 0 || dstRule.dayOfMonth < 0)
       return tz;
 
     let hour = dstRule.atHour * 3600 + dstRule.atMinute * 60;
-    let nth = dstRule.dayOfMonth === 0 ? 5 : div_rd(dstRule.dayOfMonth - 1, 7) + 1;
+    let date: string;
+    let nth: number;
 
     if (dstRule.atType === ClockType.CLOCK_TYPE_UTC)
       hour += offset;
 
-    tz += `,M${dstRule.month}.${nth}.${dstRule.dayOfWeek - 1}/${formatPosixOffset(hour)}`;
+    if (dstRule.dayOfWeek < 0)
+      date = 'J' + getDayNumber_SGC(1970, dstRule.month, dstRule.dayOfMonth);
+    else {
+      nth = dstRule.dayOfMonth === 0 ? 5 : div_rd(dstRule.dayOfMonth - 1, 7) + 1;
+      date = `,M${dstRule.month}.${nth}.${dstRule.dayOfWeek - 1}`;
+    }
+
+    tz += `,${date}/${formatPosixOffset(hour)}`;
 
     hour = this.atHour * 3600 + this.atMinute * 60;
-    nth = this.dayOfMonth === 0 ? 5 : div_rd(this.dayOfMonth - 1, 7) + 1;
 
     if (this.atType === ClockType.CLOCK_TYPE_UTC)
       hour += offset;
     else if (this.atType === ClockType.CLOCK_TYPE_STD)
       hour += dstRule.save * 60;
 
-    tz += `,M${this.month}.${nth}.${this.dayOfWeek - 1}/${formatPosixOffset(hour)}`;
+    if (this.dayOfWeek < 0)
+      date = 'J' + (getDayNumber_SGC(1970, this.month, this.dayOfMonth) + 1);
+    else {
+      nth = this.dayOfMonth === 0 ? 5 : div_rd(this.dayOfMonth - 1, 7) + 1;
+      date = `,M${this.month}.${nth}.${this.dayOfWeek - 1}`;
+    }
+
+    tz += `,M${date}/${formatPosixOffset(hour)}`;
     tz = tz.replace(/\/2\b/g, '');
 
     return tz;
@@ -200,8 +215,8 @@ export class TzRule {
         ldtDate = this.dayOfMonth;
 
       const ldt = new DateTime([ldtYear, ldtMonth, ldtDate, this.atHour, this.atMinute], Timezone.UT_ZONE);
-      let epochSecond = ldt.utcTimeSeconds - (this.atType === ClockType.CLOCK_TYPE_UTC ? 0 : zoneOffset);
-      const altEpochSecond = ldt.utcTimeSeconds - (this.atType === ClockType.CLOCK_TYPE_UTC ? 0 : lastZoneOffset) -
+      let epochSecond = ldt.utcSeconds - (this.atType === ClockType.CLOCK_TYPE_UTC ? 0 : zoneOffset);
+      const altEpochSecond = ldt.utcSeconds - (this.atType === ClockType.CLOCK_TYPE_UTC ? 0 : lastZoneOffset) -
               (this.atType === ClockType.CLOCK_TYPE_WALL ? lastDst : 0);
 
       if (altEpochSecond === minTime)

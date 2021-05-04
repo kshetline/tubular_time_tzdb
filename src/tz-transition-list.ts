@@ -5,7 +5,7 @@ import { TzTransition } from './tz-transition';
 import { clone } from '@tubular/util';
 import { IanaZoneRecord } from './iana-zone-record';
 import { DateTime, Timezone } from '@tubular/time';
-import { ClockType, DT_FORMAT, makeTime, toBase60 } from './tz-util';
+import { ClockType, DT_FORMAT, formatPosixOffset, makeTime, toBase60 } from './tz-util';
 import { TzRule } from './tz-rule';
 import { getCountries, getPopulation } from './population-and-country-data';
 import { TzCallback, TzMessageLevel, TzPhase } from './tz-writer';
@@ -58,9 +58,9 @@ export class TzTransitionList extends Array<TzTransition> {
         const turnbackTime = makeTime(curr.time, prev.utcOffset);
         const wallTime = turnbackTime.wallTime;
         const midnight = new DateTime({ y: wallTime.y, m: wallTime.m, d: wallTime.d, utcOffset: prev.utcOffset });
-        const forayIntoNextDay = turnbackTime.utcTimeSeconds - midnight.utcTimeSeconds;
+        const forayIntoNextDay = turnbackTime.utcSeconds - midnight.utcSeconds;
 
-        if (progress && !warningShown) {
+        if (forayIntoNextDay !== 0 && progress && !warningShown) {
           const forayMinutes = div_rd(forayIntoNextDay, 60);
           const foraySeconds = forayIntoNextDay % 60;
           progress(TzPhase.REËNCODE, TzMessageLevel.LOG,
@@ -475,14 +475,14 @@ export class TzTransitionList extends Array<TzTransition> {
 
       if (lookingForStdRule && tzt.dstOffset === 0 && tzt.rule.endYear === Number.MAX_SAFE_INTEGER) {
         finalStdRule = tzt.rule;
-        stdName = tzt.name;
+        stdName = tzt.name || formatPosixOffset(tzt.utcOffset, true);
         lookingForStdRule = false;
       }
 
       if (lookingForDst && tzt.dstOffset !== 0 && tzt.rule.endYear === Number.MAX_SAFE_INTEGER) {
         nominalDstOffset = tzt.dstOffset;
         finalDstRule = tzt.rule;
-        dstName = tzt.name;
+        dstName = tzt.name || formatPosixOffset(tzt.utcOffset, true);
         lookingForDst = false;
       }
     }

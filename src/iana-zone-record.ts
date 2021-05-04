@@ -55,7 +55,7 @@ export class IanaZoneRecord {
       const clockType = timeArray[6];
       const ldt = new DateTime(timeArray.slice(0, -1), Timezone.ZONELESS);
 
-      zoneRec.until = ldt.utcTimeSeconds - (clockType !== ClockType.CLOCK_TYPE_UTC ? zoneRec.utcOffset : 0);
+      zoneRec.until = ldt.utcSeconds - (clockType !== ClockType.CLOCK_TYPE_UTC ? zoneRec.utcOffset : 0);
       zoneRec.untilType = clockType;
     }
     else

@@ -50,7 +50,7 @@ function createZoneInfoBuffer(transitions: TzTransitionList, dataSize: number): 
     const offset = { key: makeKey(t), name: t.name, trans: t };
 
     if (!t.name)
-      offset.name = formatPosixOffset(t.utcOffset);
+      offset.name = formatPosixOffset(t.utcOffset, true);
 
     if (!uniqueOffsetList.find(os => os.key === offset.key)) {
       // Holding off saving the offset info from before the first saved transition shouldn't be strictly
@@ -85,21 +85,24 @@ function createZoneInfoBuffer(transitions: TzTransitionList, dataSize: number): 
   const tzh_timecnt = transitions.length - discarded - topDiscarded;
   const tzh_typecnt = uniqueOffsetList.length;
   let size = 20 + 6 * 4 + tzh_timecnt * (dataSize + 1) + tzh_typecnt * 8 + allNames.length/* + tzh_leapcnt * 4 */;
-  let posixRule: string;
+  let posixRule = '';
 
   if (dataSize > 4) {
     const [stdOffset, , finalStdRule, finalDstRule, stdName, dstName] = transitions.findFinalRulesAndOffsets();
+    const lastT = last(transitions);
 
-    if (finalStdRule) {
+    if (finalStdRule)
       posixRule = '\x0A' + finalStdRule.toPosixRule(stdOffset, stdName, finalDstRule, dstName) + '\x0A';
-      size += posixRule.length;
+    else if (lastT?.name) {
+      posixRule = '\x0A' + lastT.name + formatPosixOffset(-lastT.utcOffset) + '\x0A';
     }
+
+    size += posixRule.length;
   }
 
   const buf = Buffer.alloc(size, 0);
 
-  buf.write('TZif2' + '\x00'.repeat(15), 0, 'ascii');
-
+  buf.write('TZif2', 0, 'ascii');
   buf.writeInt32BE(tzh_typecnt, 20);
   buf.writeInt32BE(tzh_typecnt, 24);
   buf.writeInt32BE(0, 28); // No leap second entries... yet.
@@ -126,7 +129,7 @@ function createZoneInfoBuffer(transitions: TzTransitionList, dataSize: number): 
   }
 
   for (const os of uniqueOffsetList) {
-    const name = '\x00' + (os.trans.name || formatPosixOffset(os.trans.utcOffset)) + '\x00';
+    const name = '\x00' + (os.trans.name || formatPosixOffset(os.trans.utcOffset, true)) + '\x00';
 
     buf.writeInt32BE(os.trans.utcOffset, offset);
     offset += 4;

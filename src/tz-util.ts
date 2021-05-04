@@ -246,11 +246,12 @@ export function parseUntilTime(s: string, roundToMinutes = false): number[] {
   return result;
 }
 
-export function formatPosixOffset(offsetSeconds: number): string {
+export function formatPosixOffset(offsetSeconds: number, noColons = false): string {
   if (offsetSeconds == null)
     return '?';
 
-  let result = offsetSeconds < 0 ? '-' : '';
+  const colon = noColons ? '' : ':';
+  let result = offsetSeconds < 0 ? '-' : noColons ? '+' : '';
 
   offsetSeconds = Math.abs(offsetSeconds);
 
@@ -262,10 +263,10 @@ export function formatPosixOffset(offsetSeconds: number): string {
   if (minutes === 0 && offsetSeconds === 0)
     return result + hours;
 
-  result += hours + ':' + padLeft(minutes, 2, '0');
+  result += padLeft(hours, noColons ? 2 : 1, '0') + colon + padLeft(minutes, 2, '0');
 
   if (offsetSeconds !== 0)
-    result += ':' + padLeft(offsetSeconds, 2, '0');
+    result += colon + padLeft(offsetSeconds, 2, '0');
 
   return result;
 }
