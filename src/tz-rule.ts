@@ -121,14 +121,17 @@ export class TzRule {
       date = `M${dstRule.month}.${nth}.${dstRule.dayOfWeek - 1}`;
     }
 
-    tz += `,${date}/${formatPosixOffset(hour)}`;
+    tz += ',' + date;
 
-    hour = this.atHour * 3600 + this.atMinute * 60;
+    if (hour !== 7200)
+      tz += '/' + formatPosixOffset(hour);
+
+    let hourStd = this.atHour * 3600 + this.atMinute * 60;
 
     if (this.atType === ClockType.CLOCK_TYPE_UTC)
-      hour += offset;
+      hourStd += offset;
     else if (this.atType === ClockType.CLOCK_TYPE_STD)
-      hour += dstRule.save * 60;
+      hourStd += dstRule.save * 60;
 
     if (this.dayOfWeek < 0)
       date = 'J' + (getDayNumber_SGC(1970, this.month, this.dayOfMonth) + 1);
@@ -137,8 +140,10 @@ export class TzRule {
       date = `M${this.month}.${nth}.${this.dayOfWeek - 1}`;
     }
 
-    tz += `,${date}/${formatPosixOffset(hour)}`;
-    tz = tz.replace(/\/2\b/g, '');
+    tz += ',' + date;
+
+    if (hourStd !== hour)
+      tz += '/' + formatPosixOffset(hourStd);
 
     return tz;
   }

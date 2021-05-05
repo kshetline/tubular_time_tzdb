@@ -9,21 +9,22 @@ import { max } from '@tubular/math';
 
 const Y1800 = new DateTime('1800-01-01Z').utcSeconds;
 
-export async function writeZoneInfoFile(directory: string, transitions: TzTransitionList): Promise<void> {
+export async function writeZoneInfoFile(directory: string, transitions: TzTransitionList,
+                                        nameOrder?: string[]): Promise<void> {
   const zonePath = transitions.zoneId.split('/');
   directory = path.join(directory, ...zonePath.slice(0, zonePath.length - 1));
   await fs.mkdir(directory, { recursive: true });
   const fh = await fs.open(path.join(directory, last(zonePath)), 'w', 0o644);
-  const buf1 = createZoneInfoBuffer(transitions, 4);
-  const buf2 = createZoneInfoBuffer(transitions, 8);
+  const buf1 = createZoneInfoBuffer(transitions, 4, nameOrder);
+  const buf2 = createZoneInfoBuffer(transitions, 8, nameOrder);
 
   await fh.write(buf1);
   await fh.write(buf2);
   await fh.close();
 }
 
-function createZoneInfoBuffer(transitions: TzTransitionList, dataSize: number): Buffer {
-  const uniqueOffsetList: { key: string, name: string, trans: TzTransition }[] = [];
+function createZoneInfoBuffer(transitions: TzTransitionList, dataSize: number, nameOrder?: string[]): Buffer {
+  let uniqueOffsetList: { key: string, name: string, trans: TzTransition }[] = [];
   const names = new Set<string>();
   const makeKey = (t: TzTransition): string => toBase60(t.utcOffset / 60) + '/' + toBase60(t.dstOffset / 60) +
     '/' + t.name;
@@ -54,6 +55,24 @@ function createZoneInfoBuffer(transitions: TzTransitionList, dataSize: number): 
       uniqueOffsetList.push(offset);
       names.add(offset.name);
     }
+  }
+
+  if (nameOrder) {
+    const origList = uniqueOffsetList;
+
+    uniqueOffsetList = [];
+    names.clear();
+
+    for (const name of nameOrder) {
+      const index = origList.findIndex(os => os.name === name);
+
+      if (index >= 0) {
+        uniqueOffsetList.push(...origList.splice(index, 1));
+      }
+    }
+
+    uniqueOffsetList.push(...origList);
+    uniqueOffsetList.forEach(os => names.add(os.name));
   }
 
   const allNames = Array.from(names).join('\x00') + '\x00';
