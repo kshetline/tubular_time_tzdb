@@ -24,7 +24,7 @@ export async function writeZoneInfoFile(directory: string, transitions: TzTransi
 }
 
 function createZoneInfoBuffer(transitions: TzTransitionList, dataSize: number, nameOrder?: string[]): Buffer {
-  let uniqueOffsetList: { key: string, name: string, trans: TzTransition }[] = [];
+  let uniqueLocalTimeTypes: { key: string, name: string, trans: TzTransition }[] = [];
   const names = new Set<string>();
   const makeKey = (t: TzTransition): string => toBase60(t.utcOffset / 60) + '/' + toBase60(t.dstOffset / 60) +
     '/' + t.name;
@@ -46,39 +46,39 @@ function createZoneInfoBuffer(transitions: TzTransitionList, dataSize: number, n
       continue;
     }
 
-    const offset = { key: makeKey(t), name: t.name, trans: t };
+    const localTimeType = { key: makeKey(t), name: t.name, trans: t };
 
     if (!t.name)
-      offset.name = formatPosixOffset(t.utcOffset, true);
+      localTimeType.name = formatPosixOffset(t.utcOffset, true);
 
-    if (!uniqueOffsetList.find(os => os.key === offset.key)) {
-      uniqueOffsetList.push(offset);
-      names.add(offset.name);
+    if (!uniqueLocalTimeTypes.find(ltt => ltt.key === localTimeType.key)) {
+      uniqueLocalTimeTypes.push(localTimeType);
+      names.add(localTimeType.name);
     }
   }
 
   if (nameOrder) {
-    const origList = uniqueOffsetList;
+    const origList = uniqueLocalTimeTypes;
 
-    uniqueOffsetList = [];
+    uniqueLocalTimeTypes = [];
     names.clear();
 
     for (const name of nameOrder) {
-      const index = origList.findIndex(os => os.name === name);
+      const index = origList.findIndex(ltt => ltt.name === name);
 
       if (index >= 0) {
-        uniqueOffsetList.push(...origList.splice(index, 1));
+        uniqueLocalTimeTypes.push(...origList.splice(index, 1));
       }
     }
 
-    uniqueOffsetList.push(...origList);
-    uniqueOffsetList.forEach(os => names.add(os.name));
+    uniqueLocalTimeTypes.push(...origList);
+    uniqueLocalTimeTypes.forEach(ltt => names.add(ltt.name));
   }
 
   const allNames = Array.from(names).join('\x00') + '\x00';
   // Variable names tzh_timecnt, tzh_typecnt, etc. from https://man7.org/linux/man-pages/man5/tzfile.5.html
   const tzh_timecnt = transitions.length - discarded - topDiscarded;
-  const tzh_typecnt = uniqueOffsetList.length;
+  const tzh_typecnt = uniqueLocalTimeTypes.length;
   let size = 20 + 6 * 4 + tzh_timecnt * (dataSize + 1) + tzh_typecnt * 8 + allNames.length/* + tzh_leapcnt * 4 */;
   let posixRule = '';
 
@@ -120,15 +120,15 @@ function createZoneInfoBuffer(transitions: TzTransitionList, dataSize: number, n
 
   for (let i = discarded; i < transitions.length - topDiscarded; ++i) {
     const key = makeKey(transitions[i]);
-    buf.writeInt8(max(uniqueOffsetList.findIndex(os => os.key === key), 0), offset++);
+    buf.writeInt8(max(uniqueLocalTimeTypes.findIndex(ltt => ltt.key === key), 0), offset++);
   }
 
-  for (const os of uniqueOffsetList) {
-    const name = '\x00' + (os.trans.name || formatPosixOffset(os.trans.utcOffset, true)) + '\x00';
+  for (const ltt of uniqueLocalTimeTypes) {
+    const name = '\x00' + (ltt.trans.name || formatPosixOffset(ltt.trans.utcOffset, true)) + '\x00';
 
-    buf.writeInt32BE(os.trans.utcOffset, offset);
+    buf.writeInt32BE(ltt.trans.utcOffset, offset);
     offset += 4;
-    buf.writeUInt8(os.trans.dstOffset ? 1 : 0, offset++);
+    buf.writeUInt8(ltt.trans.dstOffset ? 1 : 0, offset++);
     buf.writeUInt8(('\x00' + allNames).indexOf(name), offset++);
   }
 
