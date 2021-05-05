@@ -33,7 +33,9 @@ goes backwards as well as the hour and/or minute of the day.`)
   .option('--small', 'Apply presets for "small" timezone definitions.')
   .option('-t, --typescript', 'Output TypeScript instead of JSON.')
   .option('--text', 'Output (somewhat) human-readable text')
-  .option('-u, --url <url>', `URL or version number, such as '2018c', to parse and compile.${nl}Default: ${DEFAULT_URL}`)
+  .option('-u, --url <url>', `URL or version number, such as '2018c', to parse and compile.${nl}\
+Default: ${DEFAULT_URL}`)
+  .option('-x', 'Exclude leap seconds from binary files.')
   .option('-y <year-span>', `<min_year,max_year> Year range for explicit time zone transitions.${nl}\
 Default: ${DEFAULT_MIN_YEAR},${DEFAULT_MAX_YEAR}`)
   .option('-z <zone-info-dir>', `Validate this tool's output against output from the standard${nl}\
@@ -99,6 +101,7 @@ async function getUserInput(): Promise<string> {
 
   const tzOptions: TzOutputOptions = {
     callback: progress,
+    excludeLeaps: options.x,
     filtered: options.f,
     fixRollbacks: options.r,
     roundToMinutes: options.m,

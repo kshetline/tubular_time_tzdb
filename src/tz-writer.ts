@@ -26,6 +26,7 @@ export type TzCallback = (
 
 export interface TzOptions {
   callback?: TzCallback,
+  excludeLeaps?: boolean,
   filtered?: boolean;
   fixRollbacks?: boolean;
   minYear?: number;
@@ -174,7 +175,8 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
       if (tzInfo)
         zone.transitionsMatch(tzInfo, false, options.roundToMinutes, progress);
       else
-        progress(TzPhase.VALIDATE, TzMessageLevel.ERROR, `*** ${zoneId}: matching zoneinfo file unavailable for validation`);
+        progress(TzPhase.VALIDATE, TzMessageLevel.ERROR,
+          `*** ${zoneId}: matching zoneinfo file unavailable for validation`);
     }
 
     if ((progress || options.fixRollbacks) &&
@@ -297,7 +299,7 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
         return;
       }
       else if (options.format === TzFormat.BINARY) {
-        writeZoneInfoFile(options.directory, zone).then(() => resolve());
+        writeZoneInfoFile(options.directory, zone, options.excludeLeaps ? null : leaps).then(() => resolve());
         return;
       }
 
