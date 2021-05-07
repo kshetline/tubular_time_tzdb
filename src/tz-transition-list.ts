@@ -1,4 +1,4 @@
-import { abs, max, div_rd } from '@tubular/math';
+import { abs, div_rd, max } from '@tubular/math';
 import fs from 'fs';
 import path from 'path';
 import { TzTransition } from './tz-transition';
@@ -107,6 +107,46 @@ export class TzTransitionList extends Array<TzTransition> {
       if (curr.time === prev.time ||
           curr.utcOffset === prev.utcOffset && curr.dstOffset === prev.dstOffset && curr.name === prev.name)
         this.splice(i--, 1);
+    }
+  }
+
+  eliminateNegativeDst(): void {
+    let lastWasNegative = false;
+    let lastNegativeOffset: number;
+    let lastNegativeSave: number;
+
+    for (let i = 0; i < this.length; ++i) {
+      const t = this[i];
+
+      if (t.dstOffset < 0) {
+        lastWasNegative = true;
+        lastNegativeOffset = t.dstOffset;
+        t.dstOffset = 0;
+
+        if (t.rule) {
+          t.rule = clone(t.rule);
+
+          if (t.rule.save < 0) {
+            lastNegativeSave = t.rule.save;
+            t.rule.save = 0;
+          }
+        }
+      }
+      else if (lastWasNegative) {
+        if (t.dstOffset === 0) {
+          t.dstOffset = -lastNegativeOffset;
+
+          if (t.rule) {
+            t.rule = clone(t.rule);
+            t.rule.save = -lastNegativeSave;
+
+            if (t.rule.atType === ClockType.CLOCK_TYPE_STD && lastNegativeSave === -3600 && t.rule.atHour < 23)
+              --t.rule.atHour;
+          }
+        }
+
+        lastWasNegative = false;
+      }
     }
   }
 

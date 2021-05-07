@@ -19,11 +19,13 @@ uncommenting the commented-out zone descriptions.`)
   .option('-b, --binary', 'Output binary files to directory, one file per timezone')
   .option('-f', `Filter out Etc/GMTxxxx and other timezones that are either${nl}\
 redundant or covered by options for creating fixed-offset timezones.`)
+  .option('-i', 'Include leap seconds in binary files.')
   .option('-j, --javascript', 'Output JavaScript instead of JSON.')
   .option('--large', 'Apply presets for "large" timezone definitions.')
   .option('--large-alt', 'Apply presets for "large-alt" timezone definitions.')
   .option('--list', 'List available tz database versions.')
   .option('-m', 'Round all UTC offsets to whole minutes.')
+  .option('-n', 'Allow negative DST in binary files.')
   .option('-o', 'Overwrite existing file.')
   .option('-q', 'Display no progress messages, fewer warning messages.')
   .option('-r', `Remove 'calendar rollbacks' from time zone transitions -- that is${nl}\
@@ -35,7 +37,6 @@ goes backwards as well as the hour and/or minute of the day.`)
   .option('--text', 'Output (somewhat) human-readable text')
   .option('-u, --url <url>', `URL or version number, such as '2018c', to parse and compile.${nl}\
 Default: ${DEFAULT_URL}`)
-  .option('-x', 'Exclude leap seconds from binary files.')
   .option('-y <year-span>', `<min_year,max_year> Year range for explicit time zone transitions.${nl}\
 Default: ${DEFAULT_MIN_YEAR},${DEFAULT_MAX_YEAR}`)
   .option('-z <zone-info-dir>', `Validate this tool's output against output from the standard${nl}\
@@ -100,10 +101,11 @@ async function getUserInput(): Promise<string> {
   }
 
   const tzOptions: TzOutputOptions = {
+    allowNegativeDst: options.n,
     callback: progress,
-    excludeLeaps: options.x,
     filtered: options.f,
     fixRollbacks: options.r,
+    includeLeaps: options.i,
     roundToMinutes: options.m,
     singleZone: options.s,
     systemV: options.systemv,

@@ -25,10 +25,11 @@ export type TzCallback = (
 ) => void;
 
 export interface TzOptions {
+  allowNegativeDst?: boolean,
   callback?: TzCallback,
-  excludeLeaps?: boolean,
   filtered?: boolean;
   fixRollbacks?: boolean;
+  includeLeaps?: boolean,
   minYear?: number;
   maxYear?: number;
   preset?: TzPresets;
@@ -222,6 +223,9 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
   if (duplicatesFound)
     zoneList.sort((a, b) => compareStrings(sortKey(a), sortKey(b)));
 
+  if (/* options.format === TzFormat.BINARY && */ !options.allowNegativeDst)
+    zoneList.forEach(zone => zoneMap.get(zone).eliminateNegativeDst());
+
   report(TzPhase.DONE);
 
   if (options.format === TzFormat.JSON)
@@ -299,7 +303,7 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
         return;
       }
       else if (options.format === TzFormat.BINARY) {
-        writeZoneInfoFile(options.directory, zone, options.excludeLeaps ? null : leaps).then(() => resolve());
+        writeZoneInfoFile(options.directory, zone, options.includeLeaps ? leaps : null).then(() => resolve());
         return;
       }
 
