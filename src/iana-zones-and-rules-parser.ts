@@ -17,6 +17,7 @@ export class IanaZonesAndRulesParser {
   private readonly zoneAliases = new Map<string, string>();
   private readonly ruleSetMap = new Map<string, TzRuleSet>();
 
+  private currentSource: string;
   private deltaTs: string;
   private guard = XGuard.GENERAL;
   private leapSeconds: string;
@@ -158,6 +159,7 @@ export class IanaZonesAndRulesParser {
 
     this.guard = XGuard.GENERAL;
     this.lineNo = 0;
+    this.currentSource = sourceName;
 
     while ((line = this.readLine(lines)) != null) {
       zoneRec = null;
@@ -181,7 +183,7 @@ export class IanaZonesAndRulesParser {
       }
       else if (line.startsWith('Zone')) {
         if (zone != null)
-          throw new IanaParserError(this.lineNo, sourceName, `Zone ${zoneId} was not properly terminated`);
+          throw new IanaParserError(this.lineNo, this.currentSource, `Zone ${zoneId} was not properly terminated`);
 
         [zoneRec, zoneId] = IanaZoneRecord.parseZoneRecord(line, this.roundToMinutes);
 

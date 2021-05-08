@@ -180,8 +180,8 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
           `*** ${zoneId}: matching zoneinfo file unavailable for validation`);
     }
 
-    if ((progress || options.fixRollbacks) &&
-        zone.findCalendarRollbacks(options.fixRollbacks, progress) === Rollbacks.ROLLBACKS_REMAIN)
+    if (options.fixRollbacks &&
+        zone.findCalendarRollbacks(true, progress) === Rollbacks.ROLLBACKS_REMAIN)
       report(TzPhase.REENCODE, TzMessageLevel.ERROR, `*** Failed to fix calendar rollbacks in ${zoneId}`);
 
     report(TzPhase.REENCODE, TzMessageLevel.INFO, `Compressing ${zoneId} \x1B[50G%s of %s`, i + 1, zoneList.length);
