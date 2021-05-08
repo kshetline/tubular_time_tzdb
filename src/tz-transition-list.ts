@@ -112,11 +112,19 @@ export class TzTransitionList extends Array<TzTransition> {
 
   eliminateNegativeDst(): void {
     let lastWasNegative = false;
-    let lastNegativeOffset: number;
-    let lastNegativeSave: number;
+    let lastNegativeOffset = 0;
+    let lastNegativeSave = 0;
 
     for (let i = 0; i < this.length; ++i) {
       const t = this[i];
+      let prev: TzTransition;
+
+      if (i > 0 && t.utcOffset === (prev = this[i - 1]).utcOffset && t.name === prev.name &&
+          prev.dstOffset > 0 && t.dstOffset === 0) {
+        lastWasNegative = true;
+        lastNegativeOffset = -prev.dstOffset;
+        lastNegativeSave = prev.rule ? -prev.rule.save : lastNegativeOffset;
+      }
 
       if (t.dstOffset < 0) {
         lastWasNegative = true;

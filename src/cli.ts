@@ -25,9 +25,9 @@ redundant or covered by options for creating fixed-offset timezones.`)
   .option('--large-alt', 'Apply presets for "large-alt" timezone definitions.')
   .option('--list', 'List available tz database versions.')
   .option('-m', 'Round all UTC offsets to whole minutes.')
-  .option('-n', 'Allow negative DST in binary files.')
   .option('-o', 'Overwrite existing file.')
   .option('-q', 'Display no progress messages, fewer warning messages.')
+  .option('-R, --rearguard', 'Rearguard (skip vanguard features).')
   .option('-r', `Remove 'calendar rollbacks' from time zone transitions -- that is${nl}\
 modify time zone data to prevent situations where the calendar date${nl}\
 goes backwards as well as the hour and/or minute of the day.`)
@@ -101,11 +101,11 @@ async function getUserInput(): Promise<string> {
   }
 
   const tzOptions: TzOutputOptions = {
-    allowNegativeDst: options.n,
     callback: progress,
     filtered: options.f,
     fixRollbacks: options.r,
     includeLeaps: options.i,
+    rearguard: options.rearguard,
     roundToMinutes: options.m,
     singleZone: options.s,
     systemV: options.systemv,

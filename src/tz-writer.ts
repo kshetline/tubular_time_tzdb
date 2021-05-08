@@ -25,7 +25,6 @@ export type TzCallback = (
 ) => void;
 
 export interface TzOptions {
-  allowNegativeDst?: boolean,
   callback?: TzCallback,
   filtered?: boolean;
   fixRollbacks?: boolean;
@@ -33,6 +32,7 @@ export interface TzOptions {
   minYear?: number;
   maxYear?: number;
   preset?: TzPresets;
+  rearguard?: boolean;
   roundToMinutes?: boolean;
   singleZone?: string;
   systemV?: boolean;
@@ -119,7 +119,7 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
       options.systemV = true;
   }
 
-  const parser = new IanaZonesAndRulesParser(options.roundToMinutes, progress);
+  const parser = new IanaZonesAndRulesParser(options.roundToMinutes, options.rearguard, progress);
   let version: string;
 
   try {
@@ -222,9 +222,6 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
 
   if (duplicatesFound)
     zoneList.sort((a, b) => compareStrings(sortKey(a), sortKey(b)));
-
-  if (/* options.format === TzFormat.BINARY && */ !options.allowNegativeDst)
-    zoneList.forEach(zone => zoneMap.get(zone).eliminateNegativeDst());
 
   report(TzPhase.DONE);
 

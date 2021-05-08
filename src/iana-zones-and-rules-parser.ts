@@ -10,16 +10,19 @@ export class IanaParserError extends Error {
   }
 }
 
+enum XGuard { GENERAL, VANGUARD, REARGUARD }
+
 export class IanaZonesAndRulesParser {
   private readonly zoneMap = new Map<string, IanaZone>();
   private readonly zoneAliases = new Map<string, string>();
   private readonly ruleSetMap = new Map<string, TzRuleSet>();
 
   private deltaTs: string;
+  private guard = XGuard.GENERAL;
   private leapSeconds: string;
   private lineNo = 0;
 
-  constructor(private roundToMinutes = false, private progress?: TzCallback) {};
+  constructor(private roundToMinutes = false, private rearguard = false, private progress?: TzCallback) {};
 
   async parseFromOnline(includeSystemV: boolean): Promise<string>;
   async parseFromOnline(urlOrVersion: string): Promise<string>;
@@ -153,6 +156,9 @@ export class IanaZonesAndRulesParser {
     const lines = asLines(source);
     let line: string;
 
+    this.guard = XGuard.GENERAL;
+    this.lineNo = 0;
+
     while ((line = this.readLine(lines)) != null) {
       zoneRec = null;
 
@@ -203,15 +209,32 @@ export class IanaZonesAndRulesParser {
         line = lines[0];
         ++this.lineNo;
         lines.splice(0, 1);
-      } while (line != null && (line.startsWith('#') || line.length === 0));
+      } while (line != null && line.length === 0);
 
       if (line != null) {
         const pos = line.indexOf('#');
 
-        if (pos > 0)
+        if (pos === 0) {
+          if (this.guard === XGuard.REARGUARD && !/^# \S/.test(line))
+            line = line.substr(1);
+          else {
+            if (/^# Vanguard section\b/i.test(line))
+              this.guard = XGuard.VANGUARD;
+            else if (/^# Rearguard section\b/i.test(line))
+              this.guard = XGuard.REARGUARD;
+            else if (/^# End of rearguard section\b/i.test(line))
+              this.guard = XGuard.GENERAL;
+
+            line = '';
+          }
+        }
+        else if (pos > 0)
           line = line.substring(0, pos);
 
         line = line.trimEnd();
+
+        if (line.length > 0 && this.guard !== XGuard.GENERAL && (this.guard === XGuard.VANGUARD) === this.rearguard)
+          line = '';
       }
     } while (line != null && line.length === 0);
 
