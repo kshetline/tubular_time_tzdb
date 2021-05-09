@@ -2,6 +2,8 @@
 import fs from 'fs';
 import { Command } from 'commander';
 import { DEFAULT_URL, getAvailableVersions } from './read-tzdb';
+import path from 'path';
+import rimraf from 'rimraf';
 import { padLeft, toInt } from '@tubular/util';
 import { DEFAULT_MAX_YEAR, DEFAULT_MIN_YEAR, TzFormat, TzMessageLevel, TzOutputOptions, TzPhase, TzPresets, writeTimezones } from './tz-writer';
 const { version } = require('../package.json');
@@ -10,37 +12,42 @@ const program = new Command();
 const nl = '\n' + ' '.repeat(20);
 const options = program
   .name('tzc')
-  .description(`Downloads and compiles IANA timezone data, converting to text or @tubular/time-compatible data.`)
+  .description(`Downloads and compiles IANA timezone data, converting to text, zoneinfo binary\n\
+files, or @tubular/time-compatible data.`)
   .usage('[options] [output_file_name_or_directory]')
   .version(version, '-v, --version')
   .addHelpText('after', '  -,                  Use dash by itself to output to stdout.')
   .option('-5, --systemv', `Include the SystemV timezones from the systemv file by${nl}\
 uncommenting the commented-out zone descriptions.`)
   .option('-b, --binary', 'Output binary files to directory, one file per timezone')
-  .option('-f', `Filter out Etc/GMTxxxx and other timezones that are either${nl}\
-redundant or covered by options for creating fixed-offset timezones.`)
+  .option('-f', `Filter out Etc/GMTxxx and other timezones that are either${nl}\
+redundant or covered by options for creating fixed-offset${nl}\
+timezones.`)
   .option('-i', 'Include leap seconds in binary files.')
   .option('-j, --javascript', 'Output JavaScript instead of JSON.')
   .option('--large', 'Apply presets for "large" timezone definitions.')
   .option('--large-alt', 'Apply presets for "large-alt" timezone definitions.')
   .option('--list', 'List available tz database versions.')
   .option('-m', 'Round all UTC offsets to whole minutes.')
-  .option('-o', 'Overwrite existing file.')
+  .option('-o', 'Overwrite existing file/directory.')
   .option('-q', 'Display no progress messages, fewer warning messages.')
-  .option('-R, --rearguard', 'Rearguard (skip vanguard features).')
-  .option('-r', `Remove 'calendar rollbacks' from time zone transitions -- that is${nl}\
-modify time zone data to prevent situations where the calendar date${nl}\
-goes backwards as well as the hour and/or minute of the day.`)
+  .option('-R, --rearguard', 'Rearguard mode (skip vanguard features like negative DST).')
+  .option('-r', `Remove 'calendar rollbacks' from time zone transitions --${nl}\
+that is modify time zone data to prevent situations${nl}\
+where the calendar date goes backwards as well as the${nl}\
+hour and/or minute of the day.`)
   .option('-s <zone-id>', 'Zone ID for a single time zone to be rendered.')
   .option('--small', 'Apply presets for "small" timezone definitions.')
   .option('-t, --typescript', 'Output TypeScript instead of JSON.')
   .option('--text', 'Output (somewhat) human-readable text')
-  .option('-u, --url <url>', `URL or version number, such as '2018c', to parse and compile.${nl}\
+  .option('-u, --url <url>', `URL or version number, such as '2018c', to parse and${nl}\
+compile.${nl}\
 Default: ${DEFAULT_URL}`)
-  .option('-y <year-span>', `<min_year,max_year> Year range for explicit time zone transitions.${nl}\
+  .option('-y <year-span>', `<min_year,max_year> Year range for explicit time zone${nl}
+transitions.${nl}\
 Default: ${DEFAULT_MIN_YEAR},${DEFAULT_MAX_YEAR}`)
-  .option('-z <zone-info-dir>', `Validate this tool's output against output from the standard${nl}\
-zic tool stored in the given directory.${nl}\
+  .option('-z <zone-info-dir>', `Validate this tool's output against output from the${nl}\
+standard zic tool stored in the given directory.${nl}\
 (Validation is done before applying the -r option.)`)
   .arguments('[outfile]')
   .parse(process.argv).opts();
@@ -144,6 +151,37 @@ async function getUserInput(): Promise<string> {
       tzOptions.directory = program.args[0];
     else
       tzOptions.directory = 'zoneinfo';
+
+    if (fs.existsSync(tzOptions.directory)) {
+      const filePath = options.s ? path.join(tzOptions.directory, ...options.s.split('/')) : null;
+
+      if (options.o) {
+        if (filePath)
+          rimraf.sync(filePath);
+        else
+          rimraf.sync(tzOptions.directory);
+      }
+      else if (filePath) {
+        process.stdout.write(`File "${filePath}" already exists. Overwrite it? (y/N)? `);
+
+        const response = await getUserInput();
+
+        if (!/^y/i.test(response))
+          process.exit(0);
+        else
+          rimraf.sync(filePath);
+      }
+      else {
+        process.stdout.write(`Directory "${tzOptions.directory}" already exists. Overwrite it? (y/N)? `);
+
+        const response = await getUserInput();
+
+        if (!/^y/i.test(response))
+          process.exit(0);
+        else
+          rimraf.sync(filePath);
+      }
+    }
   }
   else if (file && !file.includes('.')) {
     file += ['', '.json', '.js', '.ts', '.txt'][tzOptions.format ?? 0];
@@ -155,6 +193,8 @@ async function getUserInput(): Promise<string> {
 
       if (!/^y/i.test(response))
         process.exit(0);
+      else
+        rimraf.sync(file);
     }
 
     tzOptions.fileStream = (fileStream = fs.createWriteStream(file, 'utf8')) as unknown as NodeJS.WriteStream;
@@ -177,8 +217,9 @@ async function getUserInput(): Promise<string> {
     if (fileStream) {
       fileStream.close();
       await new Promise<void>(resolve => fileStream.on('close', () => resolve()));
-      process.exit(0);
     }
+
+    process.exit(0);
   }
   catch (err) {
     console.error(err);

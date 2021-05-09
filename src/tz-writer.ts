@@ -135,6 +135,9 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
 
   let comment = `tz database version: ${version}, years ${minYear}-${maxYear}`;
 
+  if (options.rearguard)
+    comment += ', rearguard';
+
   if (options.roundToMinutes)
     comment += ', rounded to nearest minute';
 
