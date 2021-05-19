@@ -1,15 +1,31 @@
 import { TzRule } from './tz-rule';
 import { DateTime, Timezone } from '@tubular/time';
-import { DT_FORMAT } from './tz-util';
+import { ClockType, DT_FORMAT } from './tz-util';
+import { isObject } from '@tubular/util';
 
 export class TzTransition {
+  public rule?: TzRule;
+  public clockType?: ClockType
+
   constructor(
     public time: number, // in seconds from epoch
     public utcOffset: number, // seconds, positive eastward from UTC
     public dstOffset: number, // seconds
     public name: string,
-    public rule?: TzRule
-  ) {}
+    public zoneIndex = 0,
+    ruleOrClockType?: TzRule | ClockType
+  ) {
+    if (isObject(ruleOrClockType)) {
+      this.rule = ruleOrClockType;
+      this.clockType = ruleOrClockType.atType;
+    }
+    else
+      this.clockType = ruleOrClockType;
+  }
+
+  get ruleIndex(): number {
+    return this.rule?.ruleIndex ?? Number.MAX_SAFE_INTEGER;
+  }
 
   formatTime(): string {
     if (this.time === Number.MIN_SAFE_INTEGER)

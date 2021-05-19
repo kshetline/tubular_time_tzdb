@@ -22,6 +22,7 @@ export class IanaZonesAndRulesParser {
   private guard = XGuard.GENERAL;
   private leapSeconds: string;
   private lineNo = 0;
+  private ruleIndex = 0;
 
   constructor(private roundToMinutes = false, private rearguard = false, private progress?: TzCallback) {};
 
@@ -154,6 +155,7 @@ export class IanaZonesAndRulesParser {
     let zone: IanaZone = null;
     let zoneId: string;
     let zoneRec: IanaZoneRecord;
+    let zoneIndex = 0;
     const lines = asLines(source);
     let line: string;
 
@@ -165,7 +167,7 @@ export class IanaZonesAndRulesParser {
       zoneRec = null;
 
       if (line.startsWith('Rule')) {
-        const rule = TzRule.parseRule(line);
+        const rule = TzRule.parseRule(line, ++this.ruleIndex);
         const ruleName = rule.name;
         let ruleSet = this.ruleSetMap.get(ruleName);
 
@@ -193,11 +195,13 @@ export class IanaZonesAndRulesParser {
         [zoneRec] = IanaZoneRecord.parseZoneRecord(line, this.roundToMinutes);
 
       if (zoneRec != null) {
+        zoneRec.zoneIndex = zoneIndex++;
         zone!.push(zoneRec);
 
         if (zoneRec.until === Number.MAX_SAFE_INTEGER) {
           this.zoneMap.set(zoneId, zone);
           zone = null;
+          zoneIndex = 0;
         }
       }
     }

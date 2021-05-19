@@ -28,13 +28,15 @@ export class TzRule {
   atType: ClockType;
   save: number;
   letters: string;
+  ruleIndex = Number.MAX_SAFE_INTEGER;
 
-  static parseRule(line: string): TzRule {
+  static parseRule(line: string, index = Number.MAX_SAFE_INTEGER): TzRule {
     const rule = new TzRule();
     const parts = line.split(/\s+/);
     let pos: number;
 
     rule.name = parts[1];
+    rule.ruleIndex = index;
 
     if (/^min(imum)?$/i.test(parts[2]))
       rule.startYear = Number.MIN_SAFE_INTEGER;
@@ -228,7 +230,7 @@ export class TzRule {
         epochSecond = minTime;
 
       const name = TzCompiler.createDisplayName(zpc.format, this.letters, this.save !== 0);
-      const tzt = new TzTransition(epochSecond, zpc.utcOffset + this.save, this.save, name, this);
+      const tzt = new TzTransition(epochSecond, zpc.utcOffset + this.save, this.save, name, zpc.zoneIndex, this);
 
       newTransitions.push(tzt);
     }

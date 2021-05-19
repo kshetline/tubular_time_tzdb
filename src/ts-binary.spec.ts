@@ -12,11 +12,11 @@ describe('Writing binary zoneinfo files', () => {
     this.timeout(1500000);
     this.slow(7500);
 
-    const parser = new IanaZonesAndRulesParser(false);
+    const parser = new IanaZonesAndRulesParser();
     await parser.parseFromOnline('2021a', true);
     const compiler = new TzCompiler(parser);
     const tz = await compiler.compile('America/New_York', 1800, 2040);
-    await writeZoneInfoFile('zoneinfo', tz, parser.getLeapSeconds(), ['LMT', 'EDT', 'EST', 'EWT', 'EPT']);
+    await writeZoneInfoFile('zoneinfo', tz, parser.getLeapSeconds());
     await expect(new Promise<boolean>(resolve => {
       fc('./zoneinfo/America/New_York', './test-data/New_York', result => resolve(result));
     })).to.eventually.be.true;
@@ -26,13 +26,27 @@ describe('Writing binary zoneinfo files', () => {
     this.timeout(1500000);
     this.slow(7500);
 
-    const parser = new IanaZonesAndRulesParser(false);
+    const parser = new IanaZonesAndRulesParser();
     await parser.parseFromOnline('2021a', true);
     const compiler = new TzCompiler(parser);
     const tz = await compiler.compile('Australia/Lord_Howe', 1800, 2040);
-    await writeZoneInfoFile('zoneinfo', tz, null, ['LMT', 'AEST', '+1130', '+1030', '+11']);
+    await writeZoneInfoFile('zoneinfo', tz);
     await expect(new Promise<boolean>(resolve => {
       fc('./zoneinfo/Australia/Lord_Howe', './test-data/Lord_Howe', result => resolve(result));
+    })).to.eventually.be.true;
+  });
+
+  it('should match Europe/Dublin sample', async function () {
+    this.timeout(1500000);
+    this.slow(7500);
+
+    const parser = new IanaZonesAndRulesParser(false, true);
+    await parser.parseFromOnline('2021a', true);
+    const compiler = new TzCompiler(parser);
+    const tz = await compiler.compile('Europe/Dublin', 1800, 2040, false, true);
+    await writeZoneInfoFile('zoneinfo', tz);
+    await expect(new Promise<boolean>(resolve => {
+      fc('./zoneinfo/Europe/Dublin', './test-data/Dublin', result => resolve(result));
     })).to.eventually.be.true;
   });
 });

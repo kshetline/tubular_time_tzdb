@@ -99,13 +99,13 @@ export class TzTransitionList extends Array<TzTransition> {
       return Rollbacks.ROLLBACKS_REMOVED;
   }
 
-  removeDuplicateTransitions(): void {
+  removeDuplicateTransitions(strict = false): void {
     for (let i = 1; i < this.length; ++i) {
       const prev = this[i - 1];
       const curr = this[i];
 
       if (curr.time === prev.time ||
-          curr.utcOffset === prev.utcOffset && curr.dstOffset === prev.dstOffset && curr.name === prev.name)
+          !strict && curr.utcOffset === prev.utcOffset && curr.dstOffset === prev.dstOffset && curr.name === prev.name)
         this.splice(i--, 1);
     }
   }

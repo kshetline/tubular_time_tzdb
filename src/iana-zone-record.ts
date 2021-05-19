@@ -7,6 +7,7 @@ export class IanaZoneRecord {
   format: string;
   until: number;
   untilType: ClockType;
+  zoneIndex = 0;
 
   static parseZoneRecord(line: string, roundToMinutes = false): [IanaZoneRecord, string] {
     // Unfortunately the use of tabs vs. spaces to delimit these files is wildly inconsistent,

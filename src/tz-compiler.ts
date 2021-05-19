@@ -13,6 +13,7 @@ export class CompilerError extends Error {}
 export interface ZoneProcessingContext
 {
   zoneId: string;
+  zoneIndex: number;
   lastUtcOffset: number;
   lastUntil: number;
   lastUntilType: ClockType;
@@ -51,7 +52,8 @@ export class TzCompiler {
     return compiledZones;
   }
 
-  async compile(zoneId: string, minYear: number, maxYear: number, canDefer = false): Promise<TzTransitionList>  {
+  async compile(zoneId: string, minYear: number, maxYear: number, canDefer = false,
+                strictDuplicateRemoval = false): Promise<TzTransitionList>  {
     const transitions = new TzTransitionList(zoneId);
     const zpc = {} as ZoneProcessingContext;
     const zone = this.parser.getZone(zoneId);
@@ -65,7 +67,7 @@ export class TzCompiler {
     zpc.zoneId = zoneId;
     zpc.lastUtcOffset = 0;
     zpc.lastUntil = Number.MIN_SAFE_INTEGER;
-    zpc.lastUntilType = ClockType.CLOCK_TYPE_UTC;
+    zpc.lastUntilType = ClockType.CLOCK_TYPE_WALL;
     zpc.format = null;
 
     transitions.setLastZoneRec(last(zone));
@@ -81,6 +83,7 @@ export class TzCompiler {
           if (zoneRec.rules != null && zoneRec.rules.indexOf(':') >= 0)
             dstOffset = parseTimeOffset(zoneRec.rules, true);
 
+          zpc.zoneIndex = zoneRec.zoneIndex;
           zpc.utcOffset = zoneRec.utcOffset;
           zpc.until = zoneRec.until;
           zpc.untilType = zoneRec.untilType;
@@ -89,7 +92,8 @@ export class TzCompiler {
           if (zoneRec.rules == null || zoneRec.rules.indexOf(':') >= 0) {
             const name = TzCompiler.createDisplayName(zoneRec.format, '?', dstOffset !== 0);
 
-            transitions.push(new TzTransition(zpc.lastUntil, zoneRec.utcOffset + dstOffset, dstOffset, name));
+            transitions.push(new TzTransition(zpc.lastUntil, zoneRec.utcOffset + dstOffset, dstOffset, name,
+              zoneRec.zoneIndex, zpc.lastUntilType));
 
             if (zoneRec.untilType === ClockType.CLOCK_TYPE_WALL)
               zpc.until -= dstOffset;
@@ -115,7 +119,7 @@ export class TzCompiler {
       });
     }
 
-    transitions.removeDuplicateTransitions();
+    transitions.removeDuplicateTransitions(strictDuplicateRemoval);
     transitions.trim(minYear, maxYear);
 
     return transitions;
@@ -209,7 +213,8 @@ export class TzCompiler {
         name = TzCompiler.createDisplayName(zpc.format, letters, false);
       }
 
-      newTransitions.splice(0, 0, new TzTransition(minTime, zpc.utcOffset + dstOffset, dstOffset, name, rule));
+      newTransitions.splice(0, 0, new TzTransition(minTime, zpc.utcOffset + dstOffset, dstOffset, name,
+        zpc.zoneIndex, zpc.lastUntilType));
     }
 
     transitions.push(...newTransitions);

@@ -179,7 +179,7 @@ async function getUserInput(): Promise<string> {
         if (!/^y/i.test(response))
           process.exit(0);
         else
-          rimraf.sync(filePath);
+          rimraf.sync(tzOptions.directory);
       }
     }
   }
