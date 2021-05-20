@@ -22,9 +22,11 @@ const deltaTs = '69.36 69.36 69.45';
 export const DEFAULT_URL = 'https://www.iana.org/time-zones/repository/tzdata-latest.tar.gz';
 const URL_TEMPLATE_FOR_VERSION = 'https://data.iana.org/time-zones/releases/tzdata{version}.tar.gz';
 const ALL_RELEASES = 'ftp://ftp.iana.org/tz/releases/';
-const TZ_SOURCE_FILES = new Set(['africa', 'antarctica', 'asia', 'australasia', 'europe', 'northamerica',
+const TZ_SOURCE_FILES = new Set(['main.zi', 'rearguard.zi', 'vanguard.zi']);
+const TZ_REGION_FILES = new Set(['africa', 'antarctica', 'asia', 'australasia', 'europe', 'northamerica',
                                  'pacificnew', 'southamerica', 'backward', 'etcetera', 'systemv']);
-const TZ_EXTENDED_SOURCE_FILES = new Set(TZ_SOURCE_FILES).add('leap-seconds.list').add('version');
+const TZ_EXTENDED_SOURCE_FILES = new Set([...TZ_SOURCE_FILES, ...TZ_REGION_FILES])
+  .add('leap-seconds.list').add('version');
 const NTP_BASE = -2_208_988_800;
 
 function makeError(error: any): Error {
@@ -34,6 +36,8 @@ function makeError(error: any): Error {
 export async function getByUrlOrVersion(urlOrVersion?: string, progress?: TzCallback): Promise<TzData> {
   let url: string;
   let requestedVersion: string;
+  let regionCount = 0;
+  let sourceCount = 0;
 
   if (!urlOrVersion)
     url = DEFAULT_URL;
@@ -61,6 +65,11 @@ export async function getByUrlOrVersion(urlOrVersion?: string, progress?: TzCall
 
       if (progress && sourceName !== 'version')
         progress(TzPhase.EXTRACT, TzMessageLevel.INFO, `Extracting ${sourceName}`);
+
+      if (sourceName.endsWith('.zi'))
+        ++sourceCount;
+      else if (TZ_REGION_FILES.has(sourceName))
+        ++regionCount;
 
       stream.on('data', chunk => data += chunk.toString());
       stream.on('error', err => error = err);
@@ -96,7 +105,8 @@ export async function getByUrlOrVersion(urlOrVersion?: string, progress?: TzCall
     stream.pipe(extract);
     extract.on('finish', () => error ? reject(makeError(error)) : resolve(result));
     extract.on('error', err => {
-      if (/unexpected end of data|invalid tar header/i.test(err.message) && Object.keys(result.sources).length >= 11)
+      if (/unexpected end of data|invalid tar header/i.test(err.message) &&
+          (regionCount >= TZ_REGION_FILES.size || sourceCount >= TZ_SOURCE_FILES.size))
         resolve(result);
       else
         reject(makeError(err));

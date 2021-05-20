@@ -6,6 +6,8 @@ import path from 'path';
 import rimraf from 'rimraf';
 import { padLeft, toInt } from '@tubular/util';
 import { DEFAULT_MAX_YEAR, DEFAULT_MIN_YEAR, TzFormat, TzMessageLevel, TzOutputOptions, TzPhase, TzPresets, writeTimezones } from './tz-writer';
+import { TzMode } from './iana-zones-and-rules-parser';
+
 const { version } = require('../package.json');
 
 const program = new Command();
@@ -43,6 +45,7 @@ hour and/or minute of the day.`)
   .option('-u, --url <url>', `URL or version number, such as '2018c', to parse and${nl}\
 compile.${nl}\
 Default: ${DEFAULT_URL}`)
+  .option('-V, --vanguard', 'Vanguard mode (use vanguard features like negative DST).')
   .option('-y <year-span>', `<min_year,max_year> Year range for explicit time zone${nl}
 transitions.${nl}\
 Default: ${DEFAULT_MIN_YEAR},${DEFAULT_MAX_YEAR}`)
@@ -112,7 +115,7 @@ async function getUserInput(): Promise<string> {
     filtered: options.f,
     fixRollbacks: options.r,
     includeLeaps: options.i,
-    rearguard: options.rearguard,
+    mode: options.rearguard ? TzMode.REARGUARD : (options.vanguard ? TzMode.VANGUARD : TzMode.MAIN),
     roundToMinutes: options.m,
     singleZone: options.s,
     systemV: options.systemv,
@@ -133,7 +136,7 @@ async function getUserInput(): Promise<string> {
   if (program.args[0] !== '-')
     file = program.args[0] || ('timezone' + (['s', '-small', '-large', '-large-alt'][tzOptions.preset ?? 0]));
 
-  if (options.binary || (!options.javascript && !options.typescript && !options.text && !file.includes('.')))
+  if (options.binary)
     tzOptions.format = TzFormat.BINARY;
   else if (options.javascript || (!options.typescript && !options.text && file.endsWith('.js')))
     tzOptions.format = TzFormat.JAVASCRIPT;
@@ -141,6 +144,8 @@ async function getUserInput(): Promise<string> {
     tzOptions.format = TzFormat.TYPESCRIPT;
   else if (options.text || file.endsWith('.txt'))
     tzOptions.format = TzFormat.TEXT;
+  else
+    tzOptions.format = TzFormat.JSON;
 
   if (tzOptions.format === TzFormat.BINARY) {
     if (program.args[0] === '-') {

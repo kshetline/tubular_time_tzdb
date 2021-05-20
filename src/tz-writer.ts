@@ -1,4 +1,4 @@
-import { IanaZonesAndRulesParser } from './iana-zones-and-rules-parser';
+import { IanaZonesAndRulesParser, TzMode } from './iana-zones-and-rules-parser';
 import { appendPopulationAndCountries, getPopulation, getPopulationAndCountries } from './population-and-country-data';
 import { abs, min } from '@tubular/math';
 import ttime, { DateTime } from '@tubular/time';
@@ -29,10 +29,10 @@ export interface TzOptions {
   filtered?: boolean;
   fixRollbacks?: boolean;
   includeLeaps?: boolean,
-  minYear?: number;
   maxYear?: number;
+  minYear?: number;
+  mode?: TzMode;
   preset?: TzPresets;
-  rearguard?: boolean;
   roundToMinutes?: boolean;
   singleZone?: string;
   systemV?: boolean;
@@ -119,7 +119,7 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
       options.systemV = true;
   }
 
-  const parser = new IanaZonesAndRulesParser(options.roundToMinutes, options.rearguard, progress);
+  const parser = new IanaZonesAndRulesParser(options.roundToMinutes, options.mode, progress);
   let version: string;
 
   try {
@@ -135,8 +135,10 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
 
   let comment = `tz database version: ${version}, years ${minYear}-${maxYear}`;
 
-  if (options.rearguard)
+  if (options.mode === TzMode.REARGUARD)
     comment += ', rearguard';
+  else if (options.mode === TzMode.VANGUARD)
+    comment += ', vanguard';
 
   if (options.roundToMinutes)
     comment += ', rounded to nearest minute';

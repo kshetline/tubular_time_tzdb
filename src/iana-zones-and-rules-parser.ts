@@ -10,7 +10,8 @@ export class IanaParserError extends Error {
   }
 }
 
-enum XGuard { GENERAL, VANGUARD, REARGUARD }
+export enum TzMode { REARGUARD, MAIN, VANGUARD }
+enum TzModeInternal { MAIN_EXPLICIT = 3 }
 
 export class IanaZonesAndRulesParser {
   private readonly zoneMap = new Map<string, IanaZone>();
@@ -19,12 +20,12 @@ export class IanaZonesAndRulesParser {
 
   private currentSource: string;
   private deltaTs: string;
-  private guard = XGuard.GENERAL;
+  private currentMode: TzMode | TzModeInternal  = TzMode.MAIN;
   private leapSeconds: string;
   private lineNo = 0;
   private ruleIndex = 0;
 
-  constructor(private roundToMinutes = false, private rearguard = false, private progress?: TzCallback) {};
+  constructor(private roundToMinutes = false, private mode = TzMode.MAIN, private progress?: TzCallback) {};
 
   async parseFromOnline(includeSystemV: boolean): Promise<string>;
   async parseFromOnline(urlOrVersion: string): Promise<string>;
@@ -47,6 +48,17 @@ export class IanaZonesAndRulesParser {
   parseTzData(tzData: TzData, includeSystemV = false): string {
     if (this.progress)
       this.progress(TzPhase.PARSE, TzMessageLevel.INFO, 'Parsing tz database sources');
+
+    const sourceName = TzMode[this.mode].toLowerCase() + '.zi';
+
+    if (tzData.sources[sourceName]) {
+      this.mode = TzMode.MAIN;
+
+      Object.keys(tzData.sources).forEach(name => {
+        if (name !== sourceName && !/^(backward|leap-seconds\.list|systemv|version)$/.test(name))
+          delete tzData.sources[name];
+      });
+    }
 
     if (!includeSystemV)
       delete tzData.sources.systemv;
@@ -159,7 +171,7 @@ export class IanaZonesAndRulesParser {
     const lines = asLines(source);
     let line: string;
 
-    this.guard = XGuard.GENERAL;
+    this.currentMode = TzMode.MAIN;
     this.lineNo = 0;
     this.currentSource = sourceName;
 
@@ -219,17 +231,20 @@ export class IanaZonesAndRulesParser {
 
       if (line != null) {
         const pos = line.indexOf('#');
+        const commented = (pos === 0);
 
-        if (pos === 0) {
-          if (this.guard === XGuard.REARGUARD && !/^# \S/.test(line))
+        if (commented) {
+          if (this.currentMode !== TzMode.MAIN && !/^# \S/.test(line))
             line = line.substr(1);
           else {
             if (/^# Vanguard section\b/i.test(line))
-              this.guard = XGuard.VANGUARD;
+              this.currentMode = TzMode.VANGUARD;
+            else if (/^# Main section\b/i.test(line))
+              this.currentMode = TzModeInternal.MAIN_EXPLICIT;
             else if (/^# Rearguard section\b/i.test(line))
-              this.guard = XGuard.REARGUARD;
-            else if (/^# End of rearguard section\b/i.test(line))
-              this.guard = XGuard.GENERAL;
+              this.currentMode = TzMode.REARGUARD;
+            else if (/^# End of (main|rearguard|vanguard) section\b/i.test(line))
+              this.currentMode = TzMode.MAIN;
 
             line = '';
           }
@@ -239,7 +254,8 @@ export class IanaZonesAndRulesParser {
 
         line = line.trimEnd();
 
-        if (line.length > 0 && this.guard !== XGuard.GENERAL && (this.guard === XGuard.VANGUARD) === this.rearguard)
+        if (line.length > 0 && this.currentMode !== TzMode.MAIN && this.currentMode !== this.mode &&
+            (this.mode !== TzMode.MAIN || (this.currentMode !== TzModeInternal.MAIN_EXPLICIT && commented)))
           line = '';
       }
     } while (line != null && line.length === 0);
