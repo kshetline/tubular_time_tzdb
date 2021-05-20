@@ -1,6 +1,7 @@
 import { padLeft, toInt, toNumber } from '@tubular/util';
 import ttime, { Calendar, DateTime, parseTimeOffset as pto, Timezone } from '@tubular/time';
 import { div_rd, div_tt0 } from '@tubular/math';
+import { ChildProcess, spawn as nodeSpawn } from 'child_process';
 import LAST = ttime.LAST;
 
 export enum ClockType { CLOCK_TYPE_WALL, CLOCK_TYPE_STD, CLOCK_TYPE_UTC }
@@ -10,11 +11,11 @@ export const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 export const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 export const DT_FORMAT = 'Y-MM-DD HH:mm';
-
-const clockTypeMatcher = /.+\d([gsuwz])/i;
-
 export const calendar = new Calendar();
 export class ParseError extends Error {}
+
+const isWindows = (process.platform === 'win32');
+const clockTypeMatcher = /.+\d([gsuwz])/i;
 
 export function parseTimeOffset(offset: string, roundToMinutes = false): number {
   if (offset.length < 3 && !offset.includes(':'))
@@ -269,4 +270,68 @@ export function formatPosixOffset(offsetSeconds: number, noColons = false): stri
     result += colon + padLeft(offsetSeconds, 2, '0');
 
   return result;
+}
+
+export function spawn(command: string, args: string[], options?: any): ChildProcess {
+  let inputText: string;
+  let childProcess: ChildProcess;
+
+  if (options?.inputText) {
+    inputText = options.inputText;
+    options = Object.assign({}, options);
+    delete options.inputText;
+  }
+
+  if (isWindows) {
+    if (command === 'which')
+      command = 'where';
+
+    const cmd = process.env.comspec || 'cmd';
+
+    childProcess = nodeSpawn(cmd, ['/c', command, ...args], options);
+  }
+  else
+    childProcess = nodeSpawn(command, args, options);
+
+  if (inputText) {
+    (childProcess.stdin as any).setEncoding('utf8');
+    childProcess.stdin.write(inputText);
+    childProcess.stdin.end();
+  }
+
+  return childProcess;
+}
+
+export function monitorProcess(proc: ChildProcess): Promise<string> {
+  let errors = '';
+  let output = '';
+
+  return new Promise<string>((resolve, reject) => {
+    proc.stderr.on('data', data => {
+      data = data.toString();
+      errors += data;
+    });
+    proc.stdout.on('data', data => {
+      data = data.toString();
+      output += data;
+    });
+    proc.on('error', err => {
+      reject(err);
+    });
+    proc.on('close', () => {
+      if (errors)
+        reject(new Error(errors.trim()));
+      else
+        resolve(output);
+    });
+  });
+}
+
+export async function hasCommand(command: string): Promise<boolean> {
+  try {
+    return !!(await monitorProcess(spawn('which', [command]))).trim();
+  }
+  catch {}
+
+  return false;
 }

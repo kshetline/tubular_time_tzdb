@@ -1,8 +1,9 @@
 import { IanaZone, IanaZoneRecord } from './iana-zone-record';
 import { TzRule, TzRuleSet } from './tz-rule';
 import { asLines, isBoolean, isString } from '@tubular/util';
-import { getByUrlOrVersion, getLatest, TzData } from './read-tzdb';
+import { getByUrlOrVersion, getLatest, TZ_REGION_FILES, TzData } from './read-tzdb';
 import { TzCallback, TzMessageLevel, TzPhase } from './tz-writer';
+import { hasCommand, monitorProcess, spawn } from './tz-util';
 
 export class IanaParserError extends Error {
   constructor(public lineNo: number, public sourceName: string, message: string) {
@@ -45,11 +46,18 @@ export class IanaZonesAndRulesParser {
     return this.parseTzData(tzData, includeSystemV);
   }
 
-  parseTzData(tzData: TzData, includeSystemV = false): string {
+  async parseTzData(tzData: TzData, includeSystemV = false): Promise<string> {
     if (this.progress)
       this.progress(TzPhase.PARSE, TzMessageLevel.INFO, 'Parsing tz database sources');
 
-    const sourceName = TzMode[this.mode].toLowerCase() + '.zi';
+    const awkFile = this.mode !== TzMode.MAIN && (await hasCommand('awk')) && tzData.sources['ziguard.awk'];
+
+    if (awkFile)
+      delete tzData.sources['ziguard.awk'];
+      // console.log(await monitorProcess(spawn('cat', [], { inputText: 'do, re, me\nfa, so, la,\nti, do' })));
+
+    const dataForm = TzMode[this.mode].toLowerCase();
+    const sourceName = dataForm + '.zi';
 
     if (tzData.sources[sourceName]) {
       this.mode = TzMode.MAIN;
@@ -58,6 +66,16 @@ export class IanaZonesAndRulesParser {
         if (name !== sourceName && !/^(backward|leap-seconds\.list|systemv|version)$/.test(name))
           delete tzData.sources[name];
       });
+    }
+
+    if (awkFile) {
+      this.mode = TzMode.MAIN;
+
+      for (const name of Object.keys(tzData.sources)) {
+        if (TZ_REGION_FILES.has(name))
+          tzData.sources[name] = await monitorProcess(spawn('awk', ['-v', 'DATAFORM=' + dataForm, awkFile],
+            { inputText: tzData.sources[name] }));
+      }
     }
 
     if (!includeSystemV)
@@ -233,7 +251,11 @@ export class IanaZonesAndRulesParser {
         const pos = line.indexOf('#');
         const commented = (pos === 0);
 
-        if (commented) {
+        if (commented && this.mode === TzMode.MAIN) {
+          line = '';
+          continue;
+        }
+        else if (commented) {
           if (this.currentMode !== TzMode.MAIN && !/^# \S/.test(line))
             line = line.substr(1);
           else {
@@ -254,8 +276,7 @@ export class IanaZonesAndRulesParser {
 
         line = line.trimEnd();
 
-        if (line.length > 0 && this.currentMode !== TzMode.MAIN && this.currentMode !== this.mode &&
-            (this.mode !== TzMode.MAIN || (this.currentMode !== TzModeInternal.MAIN_EXPLICIT && commented)))
+        if (line.length > 0 && this.currentMode !== TzMode.MAIN && this.currentMode !== this.mode)
           line = '';
       }
     } while (line != null && line.length === 0);

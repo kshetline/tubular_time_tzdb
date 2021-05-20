@@ -23,10 +23,10 @@ export const DEFAULT_URL = 'https://www.iana.org/time-zones/repository/tzdata-la
 const URL_TEMPLATE_FOR_VERSION = 'https://data.iana.org/time-zones/releases/tzdata{version}.tar.gz';
 const ALL_RELEASES = 'ftp://ftp.iana.org/tz/releases/';
 const TZ_SOURCE_FILES = new Set(['main.zi', 'rearguard.zi', 'vanguard.zi']);
-const TZ_REGION_FILES = new Set(['africa', 'antarctica', 'asia', 'australasia', 'europe', 'northamerica',
+export const TZ_REGION_FILES = new Set(['africa', 'antarctica', 'asia', 'australasia', 'europe', 'northamerica',
                                  'pacificnew', 'southamerica', 'backward', 'etcetera', 'systemv']);
 const TZ_EXTENDED_SOURCE_FILES = new Set([...TZ_SOURCE_FILES, ...TZ_REGION_FILES])
-  .add('leap-seconds.list').add('version');
+  .add('leap-seconds.list').add('version').add('ziguard.awk');
 const NTP_BASE = -2_208_988_800;
 
 function makeError(error: any): Error {
