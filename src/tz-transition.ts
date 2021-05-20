@@ -13,7 +13,8 @@ export class TzTransition {
     public dstOffset: number, // seconds
     public name: string,
     public zoneIndex = 0,
-    ruleOrClockType?: TzRule | ClockType
+    ruleOrClockType?: TzRule | ClockType,
+    rule?: TzRule
   ) {
     if (isObject(ruleOrClockType)) {
       this.rule = ruleOrClockType;
@@ -21,6 +22,9 @@ export class TzTransition {
     }
     else
       this.clockType = ruleOrClockType;
+
+    if (rule)
+      this.rule = rule;
   }
 
   get ruleIndex(): number {

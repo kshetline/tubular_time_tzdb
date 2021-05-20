@@ -214,7 +214,7 @@ export class TzCompiler {
       }
 
       newTransitions.splice(0, 0, new TzTransition(minTime, zpc.utcOffset + dstOffset, dstOffset, name,
-        zpc.zoneIndex, zpc.lastUntilType));
+        zpc.zoneIndex, zpc.lastUntilType, rule));
     }
 
     transitions.push(...newTransitions);
