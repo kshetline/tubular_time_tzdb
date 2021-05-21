@@ -13,7 +13,7 @@ describe('Writing binary zoneinfo files', () => {
     this.slow(7500);
 
     const parser = new IanaZonesAndRulesParser();
-    await parser.parseFromOnline('2021a', true);
+    await parser.parseFromOnline({ systemV: true, urlOrVersion: '2021a' });
     const compiler = new TzCompiler(parser);
     const tz = await compiler.compile('America/New_York', 1800, 2040);
     await writeZoneInfoFile('zoneinfo', tz, parser.getLeapSeconds());
@@ -27,7 +27,7 @@ describe('Writing binary zoneinfo files', () => {
     this.slow(7500);
 
     const parser = new IanaZonesAndRulesParser();
-    await parser.parseFromOnline('2021a', true);
+    await parser.parseFromOnline({ systemV: true, urlOrVersion: '2021a' });
     const compiler = new TzCompiler(parser);
     const tz = await compiler.compile('Australia/Lord_Howe', 1800, 2040);
     await writeZoneInfoFile('zoneinfo', tz);
@@ -40,8 +40,8 @@ describe('Writing binary zoneinfo files', () => {
     this.timeout(1500000);
     this.slow(7500);
 
-    const parser = new IanaZonesAndRulesParser(false, TzMode.REARGUARD);
-    await parser.parseFromOnline('2021a', true);
+    const parser = new IanaZonesAndRulesParser();
+    await parser.parseFromOnline({ mode: TzMode.REARGUARD, urlOrVersion: '2021a' });
     const compiler = new TzCompiler(parser);
     const tz = await compiler.compile('Europe/Dublin', 1800, 2040, false, true);
     await writeZoneInfoFile('zoneinfo', tz);

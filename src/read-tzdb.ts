@@ -24,7 +24,7 @@ const URL_TEMPLATE_FOR_VERSION = 'https://data.iana.org/time-zones/releases/tzda
 const ALL_RELEASES = 'ftp://ftp.iana.org/tz/releases/';
 const TZ_SOURCE_FILES = new Set(['main.zi', 'rearguard.zi', 'vanguard.zi']);
 export const TZ_REGION_FILES = new Set(['africa', 'antarctica', 'asia', 'australasia', 'europe', 'northamerica',
-                                 'pacificnew', 'southamerica', 'backward', 'etcetera', 'systemv']);
+                                        'pacificnew', 'southamerica', 'etcetera', 'systemv', 'backward', 'backzone']);
 const TZ_EXTENDED_SOURCE_FILES = new Set([...TZ_SOURCE_FILES, ...TZ_REGION_FILES])
   .add('leap-seconds.list').add('version').add('ziguard.awk');
 const NTP_BASE = -2_208_988_800;

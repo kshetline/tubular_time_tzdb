@@ -119,11 +119,17 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
       options.systemV = true;
   }
 
-  const parser = new IanaZonesAndRulesParser(options.roundToMinutes, options.mode, progress);
+  const parser = new IanaZonesAndRulesParser();
   let version: string;
 
   try {
-    version = await parser.parseFromOnline(options.urlOrVersion, options.systemV);
+    version = await parser.parseFromOnline({
+      mode: options.mode,
+      roundToMinutes: options.roundToMinutes,
+      progress,
+      systemV: options.systemV,
+      urlOrVersion: options.urlOrVersion
+    });
 
     if (!options.singleZone)
       report(TzPhase.PARSE, TzMessageLevel.INFO, version);

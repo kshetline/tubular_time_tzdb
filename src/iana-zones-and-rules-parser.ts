@@ -1,18 +1,28 @@
 import { IanaZone, IanaZoneRecord } from './iana-zone-record';
 import { TzRule, TzRuleSet } from './tz-rule';
-import { asLines, isBoolean, isString } from '@tubular/util';
+import { asLines } from '@tubular/util';
 import { getByUrlOrVersion, getLatest, TZ_REGION_FILES, TzData } from './read-tzdb';
 import { TzCallback, TzMessageLevel, TzPhase } from './tz-writer';
 import { hasCommand, monitorProcess, spawn } from './tz-util';
+
+export enum TzMode { REARGUARD, MAIN, VANGUARD }
+enum TzModeInternal { MAIN_EXPLICIT = 3 }
+
+export interface ParseOptions {
+  mode?: TzMode;
+  noBackward?: boolean;
+  packrat?: boolean;
+  progress?: TzCallback;
+  roundToMinutes?: boolean;
+  systemV?: boolean;
+  urlOrVersion?: string;
+}
 
 export class IanaParserError extends Error {
   constructor(public lineNo: number, public sourceName: string, message: string) {
     super(message);
   }
 }
-
-export enum TzMode { REARGUARD, MAIN, VANGUARD }
-enum TzModeInternal { MAIN_EXPLICIT = 3 }
 
 export class IanaZonesAndRulesParser {
   private readonly zoneMap = new Map<string, IanaZone>();
@@ -24,29 +34,40 @@ export class IanaZonesAndRulesParser {
   private currentMode: TzMode | TzModeInternal  = TzMode.MAIN;
   private leapSeconds: string;
   private lineNo = 0;
+  private mode = TzMode.MAIN;
+  private noBackward = false;
+  private packrat = false;
+  private progress: TzCallback;
+  private roundToMinutes = false;
   private ruleIndex = 0;
+  private systemV = false;
 
-  constructor(private roundToMinutes = false, private mode = TzMode.MAIN, private progress?: TzCallback) {};
-
-  async parseFromOnline(includeSystemV: boolean): Promise<string>;
-  async parseFromOnline(urlOrVersion: string): Promise<string>;
-  async parseFromOnline(urlOrVersion: string, includeSystemV: boolean): Promise<string>;
-  async parseFromOnline(urlOrVersionOrIsv: string | boolean, includeSystemV = false): Promise<string> {
-    const urlOrVersion = isString(urlOrVersionOrIsv) ? urlOrVersionOrIsv : null;
-
-    includeSystemV = isBoolean(urlOrVersionOrIsv) ? urlOrVersionOrIsv : includeSystemV;
+  async parseFromOnline(options?: ParseOptions): Promise<string> {
+    this.parseOptions(options);
 
     let tzData: TzData;
 
-    if (urlOrVersion)
-      tzData = await getByUrlOrVersion(urlOrVersion, this.progress);
+    if (options.urlOrVersion)
+      tzData = await getByUrlOrVersion(options.urlOrVersion, this.progress);
     else
       tzData = await getLatest(this.progress);
 
-    return this.parseTzData(tzData, includeSystemV);
+    return this.parseTzData(tzData, options);
   }
 
-  async parseTzData(tzData: TzData, includeSystemV = false): Promise<string> {
+  private parseOptions(options: ParseOptions): void {
+    options = Object.assign({}, options ?? {});
+    this.mode = options.mode ?? TzMode.MAIN;
+    this.noBackward = options.noBackward ?? false;
+    this.packrat = options.packrat ?? false;
+    this.progress = options.progress;
+    this.roundToMinutes = options.roundToMinutes ?? false;
+    this.systemV = options.systemV ?? false;
+  }
+
+  async parseTzData(tzData: TzData, options?: ParseOptions): Promise<string> {
+    this.parseOptions(options);
+
     if (this.progress)
       this.progress(TzPhase.PARSE, TzMessageLevel.INFO, 'Parsing tz database sources');
 
@@ -54,7 +75,9 @@ export class IanaZonesAndRulesParser {
 
     if (awkFile)
       delete tzData.sources['ziguard.awk'];
-      // console.log(await monitorProcess(spawn('cat', [], { inputText: 'do, re, me\nfa, so, la,\nti, do' })));
+
+    if (!this.packrat)
+      delete tzData.sources.backzone;
 
     const dataForm = TzMode[this.mode].toLowerCase();
     const sourceName = dataForm + '.zi';
@@ -78,7 +101,7 @@ export class IanaZonesAndRulesParser {
       }
     }
 
-    if (!includeSystemV)
+    if (!this.systemV)
       delete tzData.sources.systemv;
     else if (tzData.sources.systemv)
       // Uncomment the commented-out rules and timezones in the systemv file
@@ -89,7 +112,7 @@ export class IanaZonesAndRulesParser {
     this.parseSources(tzData);
 
     // Add aliases if needed for legacy time zones. Not all substitutes exactly duplicate their originals.
-    if (includeSystemV && !tzData.sources.systemv) {
+    if (this.systemV && !tzData.sources.systemv) {
       this.addAlias('SystemV/AST4', 'America/Anguilla');
       this.addAlias('SystemV/AST4ADT', 'America/Goose_Bay');
       this.addAlias('SystemV/CST6', 'America/Belize');

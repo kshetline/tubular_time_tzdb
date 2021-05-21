@@ -11,9 +11,9 @@ describe('TzCompiler', () => {
     this.timeout(60000);
 
     const data = await getLatest();
-    const parser = new IanaZonesAndRulesParser(false);
+    const parser = new IanaZonesAndRulesParser();
 
-    parser.parseTzData(data, true);
+    await parser.parseTzData(data, { systemV: true });
 
     const compiler = new TzCompiler(parser);
     let count = 0;
