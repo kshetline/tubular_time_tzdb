@@ -1,7 +1,7 @@
-import { ClockType, makeTime } from './tz-util';
+import { ClockType, DEFAULT_MAX_YEAR, DEFAULT_MIN_YEAR, makeTime } from './tz-util';
 import { IanaZonesAndRulesParser } from './iana-zones-and-rules-parser';
 import { TzTransitionList } from './tz-transition-list';
-import { last, processMillis } from '@tubular/util';
+import { isBoolean, isFunction, last, processMillis } from '@tubular/util';
 import { parseTimeOffset } from '@tubular/time';
 import { TzTransition } from './tz-transition';
 import { min, sign } from '@tubular/math';
@@ -26,13 +26,22 @@ export interface ZoneProcessingContext
 export class TzCompiler {
   constructor(private parser: IanaZonesAndRulesParser) {}
 
-  async compileAll(minYear: number, maxYear: number, progress?: TzCallback): Promise<Map<string, TzTransitionList>>  {
+  async compileAll(minYear?: number, maxYear?: number, progress?: TzCallback): Promise<Map<string, TzTransitionList>>;
+  async compileAll(minYear, maxYear, progress?: TzCallback): Promise<Map<string, TzTransitionList>>;
+  async compileAll(minYear?: number, maxYear?: number, strictDuplicateRemoval?: boolean,
+    progress?: TzCallback): Promise<Map<string, TzTransitionList>>;
+
+  async compileAll(minYear = DEFAULT_MIN_YEAR, maxYear = DEFAULT_MAX_YEAR, progressOrSdr?: TzCallback | boolean,
+                   progress?: TzCallback): Promise<Map<string, TzTransitionList>>  {
+    const strictDuplicateRemoval = isBoolean(progressOrSdr) ? progressOrSdr : false;
     const compiledZones = new Map<string, TzTransitionList>();
     const zoneIds = this.parser.getZoneIds();
     const deferred: string[] = [];
 
+    progress = isFunction(progressOrSdr) ? progressOrSdr : progress;
+
     for (const zoneId of zoneIds) {
-      const transitions = await this.compile(zoneId, minYear, maxYear, true);
+      const transitions = await this.compile(zoneId, minYear, maxYear, strictDuplicateRemoval, true);
 
       if (transitions)
         compiledZones.set(zoneId, transitions);
@@ -52,8 +61,8 @@ export class TzCompiler {
     return compiledZones;
   }
 
-  async compile(zoneId: string, minYear: number, maxYear: number, canDefer = false,
-                strictDuplicateRemoval = false): Promise<TzTransitionList>  {
+  async compile(zoneId: string, minYear = DEFAULT_MIN_YEAR, maxYear = DEFAULT_MAX_YEAR,
+                strictDuplicateRemoval = false, canDefer = false): Promise<TzTransitionList>  {
     const transitions = new TzTransitionList(zoneId);
     const zpc = {} as ZoneProcessingContext;
     const zone = this.parser.getZone(zoneId);

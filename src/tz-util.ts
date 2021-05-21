@@ -10,6 +10,9 @@ export const ClockTypeLetters = ['w', 's', 'u'];
 export const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 export const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
+export const DEFAULT_MIN_YEAR = 1850;
+export const DEFAULT_MAX_YEAR = 2050;
+
 export const DT_FORMAT = 'Y-MM-DD HH:mm';
 export const calendar = new Calendar();
 export class ParseError extends Error {}

@@ -7,9 +7,7 @@ import { TzCompiler } from './tz-compiler';
 import { Rollbacks, TzTransitionList } from './tz-transition-list';
 import { Writable } from 'stream';
 import { writeZoneInfoFile } from './tz-binary';
-
-export const DEFAULT_MIN_YEAR = 1900;
-export const DEFAULT_MAX_YEAR = 2050;
+import { DEFAULT_MAX_YEAR, DEFAULT_MIN_YEAR } from './tz-util';
 
 export enum TzFormat { BINARY, JSON, JAVASCRIPT, TYPESCRIPT, TEXT }
 export enum TzPresets { NONE, SMALL, LARGE, LARGE_ALT }
@@ -76,6 +74,7 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
   let maxYear = options.maxYear ?? DEFAULT_MAX_YEAR;
   let variableName = 'tzData';
   const currentYear = ttime().wallTime.y;
+  const cutoffYear = currentYear + 67;
   const qt = (options.format > TzFormat.JSON) ? "'" : '"';
   const iqt = (options.format > TzFormat.JSON) ? '' : '"';
   const stream = options.fileStream ?? process.stdout;
@@ -104,7 +103,7 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
     case TzPresets.LARGE:
       variableName = 'timezoneLarge';
       minYear = options.minYear ?? 1800;
-      maxYear = options.maxYear ?? currentYear + 67;
+      maxYear = options.maxYear ?? cutoffYear;
       options.filtered = options.filtered ?? false;
       options.roundToMinutes = options.roundToMinutes ?? false;
       options.fixRollbacks = options.fixRollbacks ?? false;
@@ -114,7 +113,7 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
     case TzPresets.LARGE_ALT:
       variableName = 'timezoneLargeAlt';
       minYear = options.minYear ?? 1800;
-      maxYear = options.maxYear ?? currentYear + 67;
+      maxYear = options.maxYear ?? cutoffYear;
       options.filtered = true;
       options.roundToMinutes = true;
       options.fixRollbacks = true;
