@@ -31,6 +31,7 @@ timezones.`)
   .option('--large-alt', 'Apply presets for "large-alt" timezone definitions.')
   .option('--list', 'List available tz database versions.')
   .option('-m', 'Round all UTC offsets to whole minutes.')
+  .option('-n, --no-backward', 'Skip the additional aliases in the backward file.')
   .option('-o', 'Overwrite existing file/directory.')
   .option('-q', 'Display no progress messages, fewer warning messages.')
   .option('-R, --rearguard', 'Rearguard mode (skip vanguard features like negative DST).')
@@ -38,6 +39,7 @@ timezones.`)
 that is modify time zone data to prevent situations${nl}\
 where the calendar date goes backwards as well as the${nl}\
 hour and/or minute of the day.`)
+  .option('-p, --packrat', 'Add additional timezones from the backzone file.')
   .option('-s <zone-id>', 'Zone ID for a single time zone to be rendered.')
   .option('--small', 'Apply presets for "small" timezone definitions.')
   .option('-t, --typescript', 'Output TypeScript instead of JSON.')
@@ -116,6 +118,8 @@ async function getUserInput(): Promise<string> {
     fixRollbacks: options.r,
     includeLeaps: options.i,
     mode: options.rearguard ? TzMode.REARGUARD : (options.vanguard ? TzMode.VANGUARD : TzMode.MAIN),
+    noBackward: !options.backward,
+    packrat: options.packrat,
     roundToMinutes: options.m,
     singleZone: options.s,
     systemV: options.systemv,

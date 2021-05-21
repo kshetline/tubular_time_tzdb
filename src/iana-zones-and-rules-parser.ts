@@ -1,6 +1,6 @@
 import { IanaZone, IanaZoneRecord } from './iana-zone-record';
 import { TzRule, TzRuleSet } from './tz-rule';
-import { asLines } from '@tubular/util';
+import { asLines, compareStrings } from '@tubular/util';
 import { getByUrlOrVersion, getLatest, TZ_REGION_FILES, TzData } from './read-tzdb';
 import { TzCallback, TzMessageLevel, TzPhase } from './tz-writer';
 import { hasCommand, monitorProcess, spawn } from './tz-util';
@@ -37,6 +37,7 @@ export class IanaZonesAndRulesParser {
   private mode = TzMode.MAIN;
   private noBackward = false;
   private packrat = false;
+  private preAwked = false;
   private progress: TzCallback;
   private roundToMinutes = false;
   private ruleIndex = 0;
@@ -73,8 +74,10 @@ export class IanaZonesAndRulesParser {
 
     const awkFile = this.mode !== TzMode.MAIN && (await hasCommand('awk')) && tzData.sources['ziguard.awk'];
 
-    if (awkFile)
-      delete tzData.sources['ziguard.awk'];
+    delete tzData.sources['ziguard.awk'];
+
+    if (this.noBackward)
+      delete tzData.sources.backward;
 
     if (!this.packrat)
       delete tzData.sources.backzone;
@@ -84,6 +87,7 @@ export class IanaZonesAndRulesParser {
 
     if (tzData.sources[sourceName]) {
       this.mode = TzMode.MAIN;
+      this.preAwked = true;
 
       Object.keys(tzData.sources).forEach(name => {
         if (name !== sourceName && !/^(backward|leap-seconds\.list|systemv|version)$/.test(name))
@@ -182,7 +186,13 @@ export class IanaZonesAndRulesParser {
   }
 
   private parseSources(tzData: TzData): void {
-    for (const sourceName of Object.keys(tzData.sources))
+    const sourceNames = Object.keys(tzData.sources);
+    const sortKey = (key: string): string => key === 'backward' ? 'zzz' : key === 'backzone' ? 'zzzzzz' : key;
+
+    // Sort backward and backzone to the end
+    sourceNames.sort((a, b) => compareStrings(sortKey(a), sortKey(b)));
+
+    for (const sourceName of sourceNames)
       this.parseSource(sourceName, tzData.sources[sourceName]);
 
     // Remove aliases for anything that actually has its own defined zone.
@@ -271,6 +281,9 @@ export class IanaZonesAndRulesParser {
       } while (line != null && line.length === 0);
 
       if (line != null) {
+        if (this.preAwked && this.noBackward && line === '# tzdb links for backward compatibility')
+          return undefined;
+
         const pos = line.indexOf('#');
         const commented = (pos === 0);
 

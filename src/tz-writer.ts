@@ -32,6 +32,8 @@ export interface TzOptions {
   maxYear?: number;
   minYear?: number;
   mode?: TzMode;
+  noBackward?: boolean;
+  packrat?: boolean;
   preset?: TzPresets;
   roundToMinutes?: boolean;
   singleZone?: string;
@@ -125,7 +127,9 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
   try {
     version = await parser.parseFromOnline({
       mode: options.mode,
+      noBackward: options.noBackward,
       roundToMinutes: options.roundToMinutes,
+      packrat: options.packrat,
       progress,
       systemV: options.systemV,
       urlOrVersion: options.urlOrVersion
