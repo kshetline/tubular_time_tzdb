@@ -366,10 +366,22 @@ export class TzTransitionList extends Array<TzTransition> {
       return null;
 
     const buf = fs.readFileSync(ziPath);
-    const format = max(buf.readUInt8(4) - 32, 1);
-    let offset = 32 + (format > 1 ? 51 : 0);
-    const transitionCount = buf.readInt32BE(offset);
-    const typeCount = buf.readInt32BE(offset += 4);
+    const format = max(buf.readUInt8(4) - 48, 1);
+    let offset = 20;
+
+    if (format > 1) {
+      const tzh_ttisutcnt = buf.readUInt32BE(offset);
+      const tzh_ttisstdcnt = buf.readUInt32BE(offset + 4);
+      const tzh_leapcnt = buf.readUInt32BE(offset + 8);
+      const transitionCount1 = buf.readUInt32BE(offset + 12);
+      const typeCount1 = buf.readUInt32BE(offset + 16);
+      const charCount = buf.readUInt32BE(offset + 20);
+
+      offset += tzh_ttisutcnt + tzh_ttisstdcnt + tzh_leapcnt * 4 + transitionCount1 * 5 + typeCount1 * 6 + charCount + 56;
+    }
+
+    const transitionCount = buf.readUInt32BE(offset);
+    const typeCount = buf.readUInt32BE(offset += 4);
     const times = new Array<number>(transitionCount);
     const typeIndices = new Uint8Array(transitionCount);
 

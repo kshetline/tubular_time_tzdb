@@ -7,10 +7,15 @@ It can compile timezone source files directly from <https://www.iana.org/time-zo
 Options are available for limiting the span of years covered, adjusting and filtering timezones, and choosing different output formats.
 
 - [@tubular/time-tzdb](#tubulartime-tzdb)
+  - [Requirements](#requirements)
   - [Installation](#installation)
     - [As command line tool](#as-command-line-tool)
     - [As a library](#as-a-library)
   - [CLI interface](#cli-interface)
+
+## Requirements
+
+Your system must have a command line `awk` tool installed.
 
 ## Installation
 
@@ -48,6 +53,7 @@ Options:
   --large-alt         Apply presets for "large-alt" timezone definitions.
   --list              List available tz database versions.
   -m                  Round all UTC offsets to whole minutes.
+  -n, --no-backward   Skip the additional aliases in the backward file.
   -o                  Overwrite existing file/directory.
   -q                  Display no progress messages, fewer warning messages.
   -R, --rearguard     Rearguard mode (skip vanguard features like negative DST).
@@ -55,6 +61,7 @@ Options:
                       that is modify time zone data to prevent situations
                       where the calendar date goes backwards as well as the
                       hour and/or minute of the day.
+  -p, --packrat       Add additional timezones from the backzone file.
   -s <zone-id>        Zone ID for a single time zone to be rendered.
   --small             Apply presets for "small" timezone definitions.
   -t, --typescript    Output TypeScript instead of JSON.
@@ -62,10 +69,11 @@ Options:
   -u, --url <url>     URL or version number, such as '2018c', to parse and
                       compile.
                       Default: https://www.iana.org/time-zones/repository/tzdata-latest.tar.gz
+  -V, --vanguard      Vanguard mode (use vanguard features like negative DST).
   -y <year-span>      <min_year,max_year> Year range for explicit time zone
-                      
+
   transitions.
-                      Default: 1900,2050
+                      Default: 1850,2050
   -z <zone-info-dir>  Validate this tool's output against output from the
                       standard zic tool stored in the given directory.
                       (Validation is done before applying the -r option.)

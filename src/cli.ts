@@ -5,8 +5,9 @@ import { DEFAULT_URL, getAvailableVersions } from './read-tzdb';
 import path from 'path';
 import rimraf from 'rimraf';
 import { padLeft, toInt } from '@tubular/util';
-import { DEFAULT_MAX_YEAR, DEFAULT_MIN_YEAR, TzFormat, TzMessageLevel, TzOutputOptions, TzPhase, TzPresets, writeTimezones } from './tz-writer';
+import { TzFormat, TzMessageLevel, TzOutputOptions, TzPhase, TzPresets, writeTimezones } from './tz-writer';
 import { TzMode } from './iana-zones-and-rules-parser';
+import { DEFAULT_MAX_YEAR, DEFAULT_MIN_YEAR } from './tz-util';
 
 const { version } = require('../package.json');
 

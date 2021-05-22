@@ -11,7 +11,7 @@ import { DEFAULT_MAX_YEAR, DEFAULT_MIN_YEAR } from './tz-util';
 
 export enum TzFormat { BINARY, JSON, JAVASCRIPT, TYPESCRIPT, TEXT }
 export enum TzPresets { NONE, SMALL, LARGE, LARGE_ALT }
-export enum TzPhase { DOWNLOAD, EXTRACT, PARSE, COMPILE, VALIDATE, REENCODE, DONE }
+export enum TzPhase { DOWNLOAD, EXTRACT, PARSE, COMPILE, VALIDATE, REENCODE, OUTPUT_OF_RESULTS, DONE }
 export enum TzMessageLevel { INFO, LOG, WARN, ERROR }
 
 export type TzCallback = (
@@ -237,7 +237,7 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
   if (duplicatesFound)
     zoneList.sort((a, b) => compareStrings(sortKey(a), sortKey(b)));
 
-  report(TzPhase.DONE);
+  report(TzPhase.OUTPUT_OF_RESULTS);
 
   if (options.format === TzFormat.JSON)
     write('{');
@@ -362,6 +362,8 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
         write(`export default ${variableName};`);
     }
   }
+
+  report(TzPhase.DONE);
 }
 
 function shouldFilter(zoneId: string, options: TzOutputOptions): boolean {
