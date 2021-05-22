@@ -49,7 +49,7 @@ hour and/or minute of the day.`)
 compile.${nl}\
 Default: ${DEFAULT_URL}`)
   .option('-V, --vanguard', 'Vanguard mode (use vanguard features like negative DST).')
-  .option('-y <year-span>', `<min_year,max_year> Year range for explicit time zone${nl}
+  .option('-y <year-span>', `<min_year,max_year> Year range for explicit time zone${nl}\
 transitions.${nl}\
 Default: ${DEFAULT_MIN_YEAR},${DEFAULT_MAX_YEAR}`)
   .option('-z <zone-info-dir>', `Validate this tool's output against output from the${nl}\
