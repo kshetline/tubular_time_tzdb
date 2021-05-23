@@ -168,4 +168,17 @@ When the generated data is used by `@tubular/time`, a reduced range does not nec
 
 For a few timezones rules-based descriptions are not possible for covering future times, as these timezones are reliant on rules which that cannot be expressed in the `tz database` short of explicitly providing specific DST transition dates and times for each future year. This is the case, for example, when transitions are based on Islamic calendar dates. In such cases DST transitions are reliable only up to `maxYear`.
 
+• `mode`: One of three values, `TzMode.REARGUARD`, `TzMode.MAIN`, `TzMode.VANGUARD`, with `TzMode.MAIN` being the default. As of release 2021a, `VANGUARD` and `REARGUARD` are the same, providing negative DST support and rules with hours greater than 24. Selecting `TzMode.REARGUARD` will build timezone data without these features.
+
+The future of these separate modes is uncertain, and they are likely to be phased out, but it is at least possible that sometime in the future that `VANGUARD` might enable access to features not support in `MAIN`.
+
+• `noBackward`: If `true`, timezones aliases defined in the `backward` file are omitted.
+
+• `packrat`: If `true`, extra timezones defined in the `backzone` file are included.
+
+• `preset`: One of four values, `TzPresets.NONE`, `TzPresets.SMALL`, `TzPresets.LARGE`, `TzPresets.LARGE_ALT`, with `TzPresets.NONE` being the defaults.
+
+- `TzPresets.NONE`: No default options are changed.
+- `TzPresets.SMALL`: Default options are changed to generate data for `@tubular/time`'s `small` option.
+
 ## `@tubular/time` data format
