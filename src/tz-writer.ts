@@ -26,7 +26,6 @@ export interface TzOptions {
   callback?: TzCallback,
   filtered?: boolean;
   fixRollbacks?: boolean;
-  includeLeaps?: boolean,
   maxYear?: number;
   minYear?: number;
   mode?: TzMode;
@@ -44,6 +43,7 @@ export interface TzOutputOptions extends TzOptions {
   directory?: string;
   fileStream?: NodeJS.WriteStream,
   format?: TzFormat
+  includeLeaps?: boolean,
 }
 
 const skippedZones = /America\/Indianapolis|America\/Knox_IN|Asia\/Riyadh\d\d/;
@@ -243,7 +243,7 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
     write('{');
   else if (options.format === TzFormat.JAVASCRIPT || options.format === TzFormat.TYPESCRIPT) {
     write('/* eslint-disable quote-props */');
-    write('// noinspection SpellCheckingInspection');
+    write('/* cspell:disable */ // noinspection SpellCheckingInspection');
     write(`const ${variableName} = /* trim-file-start */{ // ${comment}`);
   }
   else if (options.format === TzFormat.TEXT) {

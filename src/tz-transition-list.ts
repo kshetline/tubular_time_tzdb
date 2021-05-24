@@ -60,7 +60,9 @@ export class TzTransitionList extends Array<TzTransition> {
         const midnight = new DateTime({ y: wallTime.y, m: wallTime.m, d: wallTime.d, utcOffset: prev.utcOffset });
         const forayIntoNextDay = turnbackTime.utcSeconds - midnight.utcSeconds;
 
-        if (forayIntoNextDay !== 0 && progress && !warningShown) {
+        if (forayIntoNextDay === 0)
+          --rollbackCount;
+        else if (progress && !warningShown) {
           const forayMinutes = div_rd(forayIntoNextDay, 60);
           const foraySeconds = forayIntoNextDay % 60;
           progress(TzPhase.REENCODE, TzMessageLevel.LOG,

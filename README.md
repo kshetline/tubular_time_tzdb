@@ -14,6 +14,7 @@ Options are available for limiting the span of years covered, adjusting and filt
   - [CLI interface](#cli-interface)
   - [JavaScript/TypeScript API](#javascripttypescript-api)
     - [getTzData](#gettzdata)
+    - [`writeTimezones`](#writetimezones)
   - [`@tubular/time` data format](#tubulartime-data-format)
 
 ## Requirements
@@ -93,6 +94,7 @@ This function returns an object containing encoded timezone information for a se
 
 Here is a truncated sample of this data:
 
+<!-- cspell:disable -->
 ```json5
 {
   "version": "2021a",
@@ -114,6 +116,7 @@ Here is a truncated sample of this data:
   "Zulu": "Etc/UTC"
 }
 ```
+<!-- cspell:enable -->
 
 A detailed explanation of this format can be found [at the end of this document](#tubulartime-data-format).
 
@@ -160,17 +163,15 @@ interface TzOptions {
 
 The `fixRollbacks` option adjusts such transitions so that they delayed just enough to avoid backtracking of local calendar dates.
 
-• `includeLeaps`: This option adds leap second information to binary output files. Leap seconds are always included in JSON, JavaScript, and TypeScript formats.
-
 • `minYear` and `maxYear`: This is the range of years covered by the generated data, and it defaults to 1850-2050. Reducing the range can reduce generated data size, particularly when the lower limit is raised closer to current times, as many differently-named timezones share common descriptions.
 
 When the generated data is used by `@tubular/time`, a reduced range does not necessarily eliminate utility outside of that range, in simply makes early times dependent on JavaScript `Intl` support (when available), and future times reliant on rules-based descriptions of Daylight Saving Time transitions.
 
 For a few timezones rules-based descriptions are not possible for covering future times, as these timezones are reliant on rules which that cannot be expressed in the `tz database` short of explicitly providing specific DST transition dates and times for each future year. This is the case, for example, when transitions are based on Islamic calendar dates. In such cases DST transitions are reliable only up to `maxYear`.
 
-• `mode`: One of three values, `TzMode.REARGUARD`, `TzMode.MAIN`, `TzMode.VANGUARD`, with `TzMode.MAIN` being the default. As of release 2021a, `VANGUARD` and `REARGUARD` are the same, providing negative DST support and rules with hours greater than 24. Selecting `TzMode.REARGUARD` will build timezone data without these features.
+• `mode`: One of three values, `TzMode.REARGUARD`, `TzMode.MAIN`, `TzMode.VANGUARD`, with `TzMode.MAIN` being the default. As of release 2021a, `VANGUARD` and `REARGUARD` are the same, providing negative DST support and DST rules with hours greater than 24. Selecting `TzMode.REARGUARD` will build timezone data without these features.
 
-The future of these separate modes is uncertain, and they are likely to be phased out, but it is at least possible that sometime in the future that `VANGUARD` might enable access to features not support in `MAIN`.
+The future of these separate modes is uncertain, and they are likely to be phased out. It is at least possible, however, that sometime in the future `VANGUARD` mode might enable access to features not supported in `MAIN`.
 
 • `noBackward`: If `true`, timezones aliases defined in the `backward` file are omitted.
 
@@ -178,7 +179,67 @@ The future of these separate modes is uncertain, and they are likely to be phase
 
 • `preset`: One of four values, `TzPresets.NONE`, `TzPresets.SMALL`, `TzPresets.LARGE`, `TzPresets.LARGE_ALT`, with `TzPresets.NONE` being the defaults.
 
-- `TzPresets.NONE`: No default options are changed.
-- `TzPresets.SMALL`: Default options are changed to generate data for `@tubular/time`'s `small` option.
+- `TzPresets.NONE`: No default options are changed.<br><br>
+- `TzPresets.SMALL`: This covers explicitly-defined timezone information for the current year +/- five years, supplemented by rules-based extensions (i.e. knowing that for a particular timezone, say, “DST starts on the last Sunday of March and ends on the last Sunday of October”), and further supplemented by information extracted from `Intl`, when available. In JSON, JavaScript, or TypeScript form, this option currently generates about 40K of data. As option values, this is equivalent to:<br>
+`{ minYear: currentYear - 5, maxYear: currentYear + 5, options.systemV: true }`<br><br>
+- `TzPresets.LARGE`: Default option are set to cover full IANA timezone database up to 67 years beyond the current year. Using this will generate about 280K of data. As option values, this is equivalent to:<br>
+`{ minYear: 1800, maxYear: currentYear + 67, options.systemV: true }`<br><br>
+- `TzPresets.LARGE_ALT`: The same as `TzPresets.LARGE`, except with `filtered`, `fixRollbacks`, and `roundToMinutes` set to `true`. Using this will also generate about 280K of data.
+
+• `roundToMinutes`: If `true`, UTC offsets which are not in whole minutes are rounded to the nearest minute.
+
+• `singleZone`: Normally all timezones are processed at once. You can, however, generate data for just a single timezone by specifying the name of that timezone with this option.
+
+• `systemV`: If `true`, timezones defined in the `systemv` file are included.
+
+• `urlOrVersion`: If left undefined or null, the latest tz database will be downloaded automatically from <https://www.iana.org/time-zones/repository/tzdata-latest.tar.gz>. Otherwise a particular version can be specified, such as `'2021a'`, or a URL (including file URLs) can be used to specify a particular `.tar.gz` source.
+
+• `zoneInfoDir`: This option is for validating this tool's parsing and compilation against `zic` binaries located at the given directory path.
+
+### `writeTimezones`
+
+`async function writeTimezones(options: TzOutputOptions = {}): Promise<void>`
+
+This function writes out timezone data in either various text formats, or as `zic` binaries. It includes all of the options available for `getTzData()`, plus the following options:
+
+```typescript
+interface TzOutputOptions extends TzOptions {
+  directory?: string;
+  fileStream?: NodeJS.WriteStream,
+  format?: TzFormat
+  includeLeaps?: boolean,
+}
+```
+
+• `directory`: For binary output only, this option specifies the path to the root directory where binaries will be stored, using a directory tree structure based on timezone names. The default is `zoneinfo` in the current working directory.
+
+• `fileStream`: For textual output only, this option specifies the output stream. If not specified, output is sent to `stdout`.
+
+• `format`: One of `TzFormat.BINARY`, `TzFormat.JSON`, `TzFormat.JAVASCRIPT`, `TzFormat.TYPESCRIPT`, `TzFormat.TEXT`, with the default being `TzFormat.JSON`.
+
+JSON output is as shown in the previous example. JavaScript output is essentially the same, but declared as a module, with single-quoting for strings and some explanatory comments. TypeScript is in turn much like JavaScript, but uses `export` module syntax.
+
+`TzFormat.TEXT` is a somewhat human-readable list of transition times, possibly augments with DST rules and other info. Each transition is described with a before-and-after date, wall clock time, UTC offset, and DST offset. For example:
+
+```text
+-------- America/New_York --------
+  ____-__-__ __:__:__ ±______ ±______ --> ____-__-__ __:__:__ -045602 +000000 LMT
+  1883-11-18 12:03:57 -045602 +000000 --> 1883-11-18 12:00:00 -050000 +000000 EST
+  1918-03-31 01:59:59 -050000 +000000 --> 1918-03-31 03:00:00 -040000 +010000 EDT*
+  1918-10-27 01:59:59 -040000 +010000 --> 1918-10-27 01:00:00 -050000 +000000 EST
+  1919-03-30 01:59:59 -050000 +000000 --> 1919-03-30 03:00:00 -040000 +010000 EDT*
+  1919-10-26 01:59:59 -040000 +010000 --> 1919-10-26 01:00:00 -050000 +000000 EST
+  1920-03-28 01:59:59 -050000 +000000 --> 1920-03-28 03:00:00 -040000 +010000 EDT*
+      •••
+  2049-11-07 01:59:59 -040000 +010000 --> 2049-11-07 01:00:00 -050000 +000000 EST
+  2050-03-13 01:59:59 -050000 +000000 --> 2050-03-13 03:00:00 -040000 +010000 EDT*
+  2050-11-06 01:59:59 -040000 +010000 --> 2050-11-06 01:00:00 -050000 +000000 EST
+  Final Standard Time rule: US: 2007 to +inf, first Sun on/after Nov 1, at 2:00 wall time begin std time, S
+  Final Daylight Saving Time rule: US: 2007 to +inf, first Sun on/after Mar 8, at 2:00 wall time save 60 mins, D
+  Population: 21000000
+  Countries: US
+```
+
+• `includeLeaps`: This option adds leap second information to binary output files. Leap seconds are always included in JSON, JavaScript, and TypeScript formats.
 
 ## `@tubular/time` data format
