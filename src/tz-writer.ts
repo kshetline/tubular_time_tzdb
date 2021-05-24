@@ -40,6 +40,7 @@ export interface TzOptions {
 }
 
 export interface TzOutputOptions extends TzOptions {
+  bloat?: boolean;
   directory?: string;
   fileStream?: NodeJS.WriteStream,
   format?: TzFormat
@@ -314,7 +315,8 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
         return;
       }
       else if (options.format === TzFormat.BINARY) {
-        writeZoneInfoFile(options.directory, zone, options.includeLeaps ? leaps : null).then(() => resolve());
+        writeZoneInfoFile(options.directory, zone, options.bloat,
+          options.includeLeaps ? leaps : null).then(() => resolve());
         return;
       }
 

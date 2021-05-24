@@ -263,11 +263,10 @@ export function formatPosixOffset(offsetSeconds: number, noColons = false): stri
   offsetSeconds -= hours * 3600;
   const minutes = div_tt0(offsetSeconds, 60);
   offsetSeconds -= minutes * 60;
+  result += padLeft(hours, noColons ? 2 : 1, '0');
 
-  if (minutes === 0 && offsetSeconds === 0)
-    return result + hours;
-
-  result += padLeft(hours, noColons ? 2 : 1, '0') + colon + padLeft(minutes, 2, '0');
+  if (minutes !== 0 || offsetSeconds !== 0)
+    result += colon + padLeft(minutes, 2, '0');
 
   if (offsetSeconds !== 0)
     result += colon + padLeft(offsetSeconds, 2, '0');

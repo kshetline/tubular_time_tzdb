@@ -23,6 +23,7 @@ files, or @tubular/time-compatible data.`)
   .option('-5, --systemv', `Include the SystemV timezones from the systemv file by${nl}\
 uncommenting the commented-out zone descriptions.`)
   .option('-b, --binary', 'Output binary files to directory, one file per timezone')
+  .option('-B, --bloat', 'Equivalent to the zic "--bloat fat" option.')
   .option('-f', `Filter out Etc/GMTxxx and other timezones that are either${nl}\
 redundant or covered by options for creating fixed-offset${nl}\
 timezones.`)
@@ -114,6 +115,7 @@ async function getUserInput(): Promise<string> {
   }
 
   const tzOptions: TzOutputOptions = {
+    bloat: options.B,
     callback: progress,
     filtered: options.f,
     fixRollbacks: options.r,

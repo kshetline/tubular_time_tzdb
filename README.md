@@ -48,6 +48,7 @@ Options:
   -5, --systemv       Include the SystemV timezones from the systemv file by
                       uncommenting the commented-out zone descriptions.
   -b, --binary        Output binary files to directory, one file per timezone
+  -B, --bloat         Equivalent to the zic "--bloat fat" option.
   -f                  Filter out Etc/GMTxxx and other timezones that are either
                       redundant or covered by options for creating fixed-offset
                       timezones.
@@ -204,12 +205,15 @@ This function writes out timezone data in either various text formats, or as `zi
 
 ```typescript
 interface TzOutputOptions extends TzOptions {
+  bloat?: boolean;
   directory?: string;
   fileStream?: NodeJS.WriteStream,
   format?: TzFormat
   includeLeaps?: boolean,
 }
 ```
+
+• `bloat`: For binary output only, this option is equivalent to the `zic` option `--bloat fat` when `true`, the default being `false`, equivalent to `--bloat slim`.
 
 • `directory`: For binary output only, this option specifies the path to the root directory where binaries will be stored, using a directory tree structure based on timezone names. The default is `zoneinfo` in the current working directory.
 

@@ -9,25 +9,27 @@ import { abs, max, sign } from '@tubular/math';
 
 const Y1800 = new DateTime('1800-01-01Z').utcSeconds;
 
-export async function writeZoneInfoFile(directory: string, transitions: TzTransitionList,
+export async function writeZoneInfoFile(directory: string, transitions: TzTransitionList, bloat = false,
                                         leapSeconds?: string): Promise<void> {
   const zonePath = transitions.zoneId.split('/');
   directory = path.join(directory, ...zonePath.slice(0, zonePath.length - 1));
   await fs.mkdir(directory, { recursive: true });
   const fh = await fs.open(path.join(directory, last(zonePath)), 'w', 0o644);
-  const buf1 = createZoneInfoBuffer(transitions, 4, leapSeconds);
-  const buf2 = createZoneInfoBuffer(transitions, 8, leapSeconds);
+  const buf1 = bloat ? createZoneInfoBuffer(transitions, 4, leapSeconds) :
+    Buffer.from('TZif2' + '\x00'.repeat(34) + '\x01\x00\x00\x00\x01' + '\x00'.repeat(7), 'ascii');
+  const buf2 = createZoneInfoBuffer(transitions, 8, leapSeconds, bloat);
 
   await fh.write(buf1);
   await fh.write(buf2);
   await fh.close();
 }
 
-function createZoneInfoBuffer(transitions: TzTransitionList, dataSize: number, leapSeconds?: string): Buffer {
+function createZoneInfoBuffer(transitions: TzTransitionList, dataSize: number,
+                              leapSeconds?: string, bloat = true): Buffer {
   const uniqueLocalTimeTypes: { key: string, name: string, trans: TzTransition }[] = [];
   const names = new Set<string>();
   const makeKey = (t: TzTransition): string => toBase60(t.utcOffset / 60) + '/' + toBase60(t.dstOffset / 60) +
-    '/' + t.name + '/' + (t.clockType);
+    '/' + (t.name ?? formatPosixOffset(t.utcOffset, true)) + '/' + (t.clockType);
   let discarded = 0;
   let topDiscarded = 0;
   const leaps = !leapSeconds ? [] : leapSeconds.split(/\s+/).map(l =>
@@ -104,7 +106,7 @@ function createZoneInfoBuffer(transitions: TzTransitionList, dataSize: number, l
   // Variable names tzh_timecnt, tzh_typecnt, etc. from https://man7.org/linux/man-pages/man5/tzfile.5.html
   const tzh_timecnt = transitions.length - discarded - topDiscarded;
   const tzh_typecnt = uniqueLocalTimeTypes.length;
-  let size = 20 + 6 * 4 + tzh_timecnt * (dataSize + 1) + tzh_typecnt * 8 + allNames.length +
+  let size = 20 + 6 * 4 + tzh_timecnt * (dataSize + 1) + tzh_typecnt * (bloat ? 8 : 6) + allNames.length +
     tzh_leapcnt * (4 + dataSize);
   let posixRule = '';
 
@@ -116,6 +118,8 @@ function createZoneInfoBuffer(transitions: TzTransitionList, dataSize: number, l
       posixRule = '\x0A' + finalStdRule.toPosixRule(stdOffset, stdName, finalDstRule, dstName) + '\x0A';
     else if (lastT?.name)
       posixRule = '\x0A' + lastT.name + formatPosixOffset(-lastT.utcOffset) + '\x0A';
+    else
+      posixRule = '\x0A<' + formatPosixOffset(stdOffset, true) + '>' + formatPosixOffset(-stdOffset) + '\x0A';
 
     size += posixRule.length;
   }
@@ -123,8 +127,8 @@ function createZoneInfoBuffer(transitions: TzTransitionList, dataSize: number, l
   const buf = Buffer.alloc(size, 0);
 
   buf.write('TZif2', 0, 'ascii');
-  buf.writeUInt32BE(tzh_typecnt, 20);
-  buf.writeUInt32BE(tzh_typecnt, 24);
+  buf.writeUInt32BE(bloat ? tzh_typecnt : 0, 20);
+  buf.writeUInt32BE(bloat ? tzh_typecnt : 0, 24);
   buf.writeUInt32BE(tzh_leapcnt, 28);
   buf.writeUInt32BE(tzh_timecnt, 32);
   buf.writeUInt32BE(tzh_typecnt, 36);
@@ -174,11 +178,13 @@ function createZoneInfoBuffer(transitions: TzTransitionList, dataSize: number, l
     offset += 4;
   });
 
-  for (const ltt of uniqueLocalTimeTypes)
-    buf.writeUInt8(ltt.trans.clockType ? 1 : 0, offset++);
+  if (bloat) {
+    for (const ltt of uniqueLocalTimeTypes)
+      buf.writeUInt8(ltt.trans.clockType ? 1 : 0, offset++);
 
-  for (const ltt of uniqueLocalTimeTypes)
-    buf.writeUInt8(ltt.trans.clockType === 2 ? 1 : 0, offset++);
+    for (const ltt of uniqueLocalTimeTypes)
+      buf.writeUInt8(ltt.trans.clockType === 2 ? 1 : 0, offset++);
+  }
 
   if (posixRule)
     buf.write(posixRule, size - posixRule.length);
