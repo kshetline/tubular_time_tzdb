@@ -8,6 +8,7 @@ import { Rollbacks, TzTransitionList } from './tz-transition-list';
 import { Writable } from 'stream';
 import { writeZoneInfoFile } from './tz-binary';
 import { DEFAULT_MAX_YEAR, DEFAULT_MIN_YEAR } from './tz-util';
+import { MAIN_REGIONS } from './read-tzdb';
 
 export enum TzFormat { BINARY, JSON, JAVASCRIPT, TYPESCRIPT, TEXT }
 export enum TzPresets { NONE, SMALL, LARGE, LARGE_ALT }
@@ -33,7 +34,7 @@ export interface TzOptions {
   packrat?: boolean;
   preset?: TzPresets;
   roundToMinutes?: boolean;
-  singleZone?: string;
+  singleRegionOrZone?: string;
   systemV?: boolean;
   urlOrVersion?: string;
   zoneInfoDir?: string;
@@ -123,6 +124,9 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
 
   const parser = new IanaZonesAndRulesParser();
   let version: string;
+  const singleZone = options.singleRegionOrZone && !MAIN_REGIONS.has(options.singleRegionOrZone) &&
+    options.singleRegionOrZone;
+  const singleRegion = !singleZone && options.singleRegionOrZone?.toLowerCase();
 
   try {
     version = await parser.parseFromOnline({
@@ -131,11 +135,12 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
       roundToMinutes: options.roundToMinutes,
       packrat: options.packrat,
       progress,
+      singleRegion,
       systemV: options.systemV,
       urlOrVersion: options.urlOrVersion
     });
 
-    if (!options.singleZone)
+    if (!singleZone)
       report(TzPhase.PARSE, TzMessageLevel.INFO, version);
   }
   catch (err) {
@@ -162,8 +167,8 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
   const compiler = new TzCompiler(parser);
   let zoneMap: Map<string, TzTransitionList>;
 
-  if (options.singleZone)
-    zoneMap = new Map().set(options.singleZone, await compiler.compile(options.singleZone, minYear, maxYear));
+  if (singleZone)
+    zoneMap = new Map().set(singleZone, await compiler.compile(singleZone, minYear, maxYear));
   else
     zoneMap = await compiler.compileAll(minYear, maxYear, progress);
 
@@ -175,14 +180,14 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
   const notOriginallyAliased = new Set(Array.from(zoneMap.values()).filter(z => !z.aliasFor).map(z => z.zoneId));
 
   zoneList = zoneList.sort((a, b) =>
-    compareStrings(sortKey(a), sortKey(b))).filter(z => !shouldFilter(z, options));
+    compareStrings(sortKey(a), sortKey(b))).filter(z => !shouldFilter(z, options, singleZone));
 
   // Purge duplicates
   for (let i = 0; i < zoneList.length; ++i) {
     const zoneId = zoneList[i];
     const zone = zoneMap.get(zoneId);
 
-    if (zone.aliasFor && !options.singleZone)
+    if (zone.aliasFor && !singleZone)
       continue;
     else if (options.zoneInfoDir) {
       const tzInfo = TzTransitionList.getZoneTransitionsFromZoneinfo(options.zoneInfoDir, zoneId,
@@ -266,7 +271,7 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
     if (leaps)
       write(`  ${iqt}leapSeconds${iqt}: ${qt}${leaps}${qt},`);
   }
-  else if (options.format === TzFormat.TEXT && !options.singleZone) {
+  else if (options.format === TzFormat.TEXT && !singleZone) {
     if (deltaTs) {
       write('----------- Delta T -----------');
 
@@ -368,8 +373,8 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
   report(TzPhase.DONE);
 }
 
-function shouldFilter(zoneId: string, options: TzOutputOptions): boolean {
-  if ((options.filtered && skippedZones.test(zoneId)) || (options.singleZone && zoneId !== options.singleZone))
+function shouldFilter(zoneId: string, options: TzOutputOptions, singleZone: string): boolean {
+  if ((options.filtered && skippedZones.test(zoneId)) || (singleZone && zoneId !== singleZone))
     return true;
 
   let region: string;

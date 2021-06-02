@@ -22,7 +22,7 @@ files, or @tubular/time-compatible data.`)
   .addHelpText('after', '  -,                  Use dash by itself to output to stdout.')
   .option('-5, --systemv', `Include the SystemV timezones from the systemv file by${nl}\
 uncommenting the commented-out zone descriptions.`)
-  .option('-b, --binary', 'Output binary files to directory, one file per timezone')
+  .option('-b, --binary', 'Output binary files to a directory, one file per timezone')
   .option('-B, --bloat', 'Equivalent to the zic "--bloat fat" option.')
   .option('-f', `Filter out Etc/GMTxxx and other timezones that are either${nl}\
 redundant or covered by options for creating fixed-offset${nl}\
@@ -42,7 +42,7 @@ that is modify time zone data to prevent situations${nl}\
 where the calendar date goes backwards as well as the${nl}\
 hour and/or minute of the day.`)
   .option('-p, --packrat', 'Add additional timezones from the backzone file.')
-  .option('-s <zone-id>', 'Zone ID for a single time zone to be rendered.')
+  .option('-s <zone-id>', 'ID/name for a single timezone/region to be rendered.')
   .option('--small', 'Apply presets for "small" timezone definitions.')
   .option('-t, --typescript', 'Output TypeScript instead of JSON.')
   .option('--text', 'Output (somewhat) human-readable text')
@@ -124,7 +124,7 @@ async function getUserInput(): Promise<string> {
     noBackward: !options.backward,
     packrat: options.packrat,
     roundToMinutes: options.m,
-    singleZone: options.s,
+    singleRegionOrZone: options.s,
     systemV: options.systemv,
     urlOrVersion: options.url,
     zoneInfoDir: options.z

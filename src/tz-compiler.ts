@@ -55,7 +55,8 @@ export class TzCompiler {
     for (const zoneId of deferred) {
       const alias = this.parser.getAliasFor(zoneId);
 
-      compiledZones.set(zoneId, compiledZones.get(alias).clone(zoneId, alias));
+      if (alias && compiledZones.get(alias))
+        compiledZones.set(zoneId, compiledZones.get(alias).clone(zoneId, alias));
     }
 
     return compiledZones;

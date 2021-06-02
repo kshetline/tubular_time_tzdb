@@ -47,7 +47,7 @@ Options:
   -v, --version       output the version number
   -5, --systemv       Include the SystemV timezones from the systemv file by
                       uncommenting the commented-out zone descriptions.
-  -b, --binary        Output binary files to directory, one file per timezone
+  -b, --binary        Output binary files to a directory, one file per timezone
   -B, --bloat         Equivalent to the zic "--bloat fat" option.
   -f                  Filter out Etc/GMTxxx and other timezones that are either
                       redundant or covered by options for creating fixed-offset
@@ -67,7 +67,7 @@ Options:
                       where the calendar date goes backwards as well as the
                       hour and/or minute of the day.
   -p, --packrat       Add additional timezones from the backzone file.
-  -s <zone-id>        Zone ID for a single time zone to be rendered.
+  -s <zone-id>        ID/name for a single timezone/region to be rendered.
   --small             Apply presets for "small" timezone definitions.
   -t, --typescript    Output TypeScript instead of JSON.
   --text              Output (somewhat) human-readable text
@@ -215,15 +215,54 @@ interface TzOutputOptions extends TzOptions {
 
 • `bloat`: For binary output only, this option is equivalent to the `zic` option `--bloat fat` when `true`, the default being `false`, equivalent to `--bloat slim`.
 
-• `directory`: For binary output only, this option specifies the path to the root directory where binaries will be stored, using a directory tree structure based on timezone names. The default is `zoneinfo` in the current working directory.
+• `directory`: For binary output only, this option specifies the path to the root directory where binaries will be stored, using a directory tree structure based on timezone names. The default is `zoneinfo` in the current working directory. Separate files are created for each timezone, in a structure like this:
+
+```text
+├── zoneinfo
+│   ├── Africa
+│   │   ├── Abidjan
+│   │   ├── Accra
+│   │   ├── Addis_Ababa
+│   │   ├── Algiers
+ •••
+│   ├── America
+│   │   ├── Adak
+│   │   ├── Anchorage
+│   │   ├── Anguilla
+│   │   ├── Antigua
+│   │   ├── Araguaina
+│   │   ├── Argentina
+│   │   │   ├── Buenos_Aires
+│   │   │   ├── Catamarca
+│   │   │   ├── ComodRivadavia
+│   │   │   ├── Cordoba
+ •••
+│   ├── Cuba
+│   ├── EET
+│   ├── EST
+│   ├── EST5EDT
+│   ├── Egypt
+│   ├── Eire
+│   ├── Etc
+│   │   ├── GMT
+│   │   ├── GMT+0
+│   │   ├── GMT+1
+│   │   ├── GMT+10
+ •••
+│   ├── UTC
+│   ├── Universal
+│   ├── W-SU
+│   ├── WET
+│   └── Zulu
+```
 
 • `fileStream`: For textual output only, this option specifies the output stream. If not specified, output is sent to `stdout`.
 
 • `format`: One of `TzFormat.BINARY`, `TzFormat.JSON`, `TzFormat.JAVASCRIPT`, `TzFormat.TYPESCRIPT`, `TzFormat.TEXT`, with the default being `TzFormat.JSON`.
 
-JSON output is as shown in the previous example. JavaScript output is essentially the same, but declared as a module, with single-quoting for strings and some explanatory comments. TypeScript is in turn much like JavaScript, but uses `export` module syntax.
+JSON output is as shown in the previous example. JavaScript output is essentially the same, but declared as a module, with single-quoting for strings and some explanatory comments added. TypeScript output is in turn much like JavaScript, but uses `export` module syntax.
 
-`TzFormat.TEXT` is a somewhat human-readable list of transition times, possibly augments with DST rules and other info. Each transition is described with a before-and-after date, wall clock time, UTC offset, and DST offset. For example:
+`TzFormat.TEXT` produces a somewhat human-readable list of transition times, possibly augmented with DST rules and meta info. Each transition is described with a before-and-after date, wall clock time for the transition, UTC offset, and DST offset. For example:
 
 ```text
 -------- America/New_York --------
@@ -244,6 +283,6 @@ JSON output is as shown in the previous example. JavaScript output is essentiall
   Countries: US
 ```
 
-• `includeLeaps`: This option adds leap second information to binary output files. Leap seconds are always included in JSON, JavaScript, and TypeScript formats.
+• `includeLeaps`: This option adds leap second information to binary output files. Leap seconds are always included in the JSON, JavaScript, and TypeScript formats.
 
 ## `@tubular/time` data format

@@ -1,7 +1,7 @@
 import { IanaZone, IanaZoneRecord } from './iana-zone-record';
 import { TzRule, TzRuleSet } from './tz-rule';
 import { asLines, compareStrings } from '@tubular/util';
-import { getByUrlOrVersion, getLatest, TZ_REGION_FILES, TzData } from './read-tzdb';
+import { getByUrlOrVersion, getLatest, MAIN_REGIONS, TZ_REGION_FILES, TzData } from './read-tzdb';
 import { TzCallback, TzMessageLevel, TzPhase } from './tz-writer';
 import { hasCommand, monitorProcess, spawn } from './tz-util';
 
@@ -14,13 +14,14 @@ export interface ParseOptions {
   packrat?: boolean;
   progress?: TzCallback;
   roundToMinutes?: boolean;
+  singleRegion?: string;
   systemV?: boolean;
   urlOrVersion?: string;
 }
 
 export class IanaParserError extends Error {
   constructor(public lineNo: number, public sourceName: string, message: string) {
-    super(message);
+    super(lineNo && sourceName ? `${sourceName}, line ${lineNo}: ${message}` : message);
   }
 }
 
@@ -41,6 +42,7 @@ export class IanaZonesAndRulesParser {
   private progress: TzCallback;
   private roundToMinutes = false;
   private ruleIndex = 0;
+  private singleRegion: string;
   private systemV = false;
 
   async parseFromOnline(options?: ParseOptions): Promise<string> {
@@ -63,6 +65,7 @@ export class IanaZonesAndRulesParser {
     this.packrat = options.packrat ?? false;
     this.progress = options.progress;
     this.roundToMinutes = options.roundToMinutes ?? false;
+    this.singleRegion = options.singleRegion;
     this.systemV = options.systemV ?? false;
   }
 
@@ -85,7 +88,13 @@ export class IanaZonesAndRulesParser {
     const dataForm = TzMode[this.mode].toLowerCase();
     const sourceName = dataForm + '.zi';
 
-    if (tzData.sources[sourceName]) {
+    if (this.singleRegion) {
+      Object.keys(tzData.sources).forEach(key => {
+        if (MAIN_REGIONS.has(key) && key !== this.singleRegion)
+          delete tzData.sources[key];
+      });
+    }
+    else if (tzData.sources[sourceName]) {
       this.mode = TzMode.MAIN;
       this.preAwked = true;
 
@@ -205,12 +214,16 @@ export class IanaZonesAndRulesParser {
     for (const zoneId of this.zoneAliases.keys()) {
       let original = zoneId;
 
-      do { // Earlier version of the database have indirect links.
+      do { // Earlier version of the database has indirect links.
         original = this.zoneAliases.get(original);
       } while (this.zoneAliases.has(original));
 
-      if (!this.zoneMap.has(original))
-        throw new IanaParserError(0, null, `${zoneId} is mapped to unknown time zone ${original}`);
+      if (!this.zoneMap.has(original)) {
+        if (this.singleRegion)
+          delete this.zoneAliases[original];
+        else
+          throw new IanaParserError(0, null, `${zoneId} is mapped to unknown time zone ${original}`);
+      }
     }
   }
 
