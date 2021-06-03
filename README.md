@@ -302,7 +302,7 @@ JSON output is as shown in the previous example. JavaScript output is essentiall
   Countries: US
 ```
 
-A trailing asterisk `*` indication a transition into Daylight Saving Time.
+A trailing asterisk `*` indicates a transition into Daylight Saving Time.
 
 • `includeLeaps`: This option adds leap second information to binary output files. Leap seconds are always included in the JSON, JavaScript, and TypeScript formats regardless of this option.
 
