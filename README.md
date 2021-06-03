@@ -1,6 +1,6 @@
 # @tubular/time-tzdb
 
-**@tubular/time-tzdb** is an IANA timezone compiler, specifically for generating timezone data compatible with **[@tubular/time](https://www.npmjs.com/package/@tubular/time)**.
+**@tubular/time-tzdb** is an IANA timezone compiler, specifically for generating timezone data compatible with **[@tubular/time](https://www.npmjs.com/package/@tubular/time)**, but also capable of generating standard `zic`-style binaries.
 
 It can compile timezone source files directly from <https://www.iana.org/time-zones/>, using the latest release or any particular requested version, or from a local `.tar.gz` file specified via file URL.
 
@@ -15,7 +15,14 @@ Options are available for limiting the span of years covered, adjusting and filt
   - [JavaScript/TypeScript API](#javascripttypescript-api)
     - [getTzData](#gettzdata)
     - [`writeTimezones`](#writetimezones)
+  - [Listing available tz database releases](#listing-available-tz-database-releases)
   - [`@tubular/time` data format](#tubulartime-data-format)
+    - [Timezone descriptions](#timezone-descriptions)
+      - [Base-60 numbers](#base-60-numbers)
+      - [Not-completely-formal Extended BNF for timezone description syntax](#not-completely-formal-extended-bnf-for-timezone-description-syntax)
+      - [Simple timezone alias](#simple-timezone-alias)
+      - [Pseudo-alias](#pseudo-alias)
+      - [Modified pseudo-alias](#modified-pseudo-alias)
 
 ## Requirements
 
@@ -31,7 +38,7 @@ Your system should have a command line `awk` tool installed for full functionali
 
 `npm install @tubular/time-tzdb`
 
-`import { getByUrlOrVersion, TzData, writeTimezones`...`} from '@tubular/time_tzdb';`
+`import { getAvailableVersions, getTzData, writeTimezones`...`} from '@tubular/time_tzdb';`
 
 ## CLI interface
 
@@ -189,11 +196,11 @@ The future of these separate modes is uncertain, and they are likely to be phase
 
 • `roundToMinutes`: If `true`, UTC offsets which are not in whole minutes are rounded to the nearest minute.
 
-• `singleZone`: Normally all timezones are processed at once. You can, however, generate data for just a single timezone by specifying the name of that timezone with this option.
+• `singleRegionOrZone`: Normally all timezones are processed at once. You can, however, generate data for just a single timezone by specifying the name of that timezone with this option, or you can specify a region such as `'africa'` or `'southamerica'` to get all of the timezones for just that region.
 
 • `systemV`: If `true`, timezones defined in the `systemv` file are included.
 
-• `urlOrVersion`: If left undefined or null, the latest tz database will be downloaded automatically from <https://www.iana.org/time-zones/repository/tzdata-latest.tar.gz>. Otherwise a particular version can be specified, such as `'2021a'`, or a URL (including file URLs) can be used to specify a particular `.tar.gz` source.
+• `urlOrVersion`: If left undefined or null, the latest tz database will be downloaded automatically from <https://www.iana.org/time-zones/repository/tzdata-latest.tar.gz>. Otherwise a particular tz database version can be specified, such as `'2021a'`, or a URL (including file URLs) can be used to specify a particular `.tar.gz` source.
 
 • `zoneInfoDir`: This option is for validating this tool's parsing and compilation against `zic` binaries located at the given directory path.
 
@@ -285,4 +292,123 @@ JSON output is as shown in the previous example. JavaScript output is essentiall
 
 • `includeLeaps`: This option adds leap second information to binary output files. Leap seconds are always included in the JSON, JavaScript, and TypeScript formats.
 
+## Listing available tz database releases
+
+`async function getAvailableVersions(): Promise<string[]>`
+
+This function returns a sorted list of tz database release versions, the last of which will be the latest release available from <https://www.iana.org/time-zones/>.
+
 ## `@tubular/time` data format
+
+Timezone data takes the form of an object with string keys for string values, where each key is either the name of a piece of metadata describing the collection of timezones, or the name of an IANA timezone.
+
+Each timezone name is a key to a full timezone description, a simple alias to another timezone, or an alias to another timezone with some variant metadata.
+
+To repeat the sample data from earlier in this document:
+
+<!-- cspell:disable -->
+```json5
+{
+  "version": "2021a",
+  "years": "1800-2088",
+  "deltaTs": "69.36 69.36 69.45",
+  "leapSeconds": "912 1096 1461 1826 2191 2557 2922 3287 3652 4199 4564 4929 5660 6574 7305 7670 8217 8582 8947 9496 10043 10592 13149 14245 15522 16617 17167",
+  "Africa/Abidjan": "-001608 +0000 0;-g.8/0/LMT 0/0/GMT;1;-2ldXH.Q;;48e5;BFCIGMGNMLMRSHSLSNTG",
+  "Africa/Accra": "-000052 +0000 0;-0.Q/0/LMT 0/0/GMT k/k u/0 u/u;1212121212121212121212121212121212121212121212131414141414141;-2bRzX.8 9RbX.8 fdE 1BAk MLE 1Bck MLE 1Bck MLE 1Bck MLE 1BAk MLE 1Bck MLE 1Bck MLE 1Bck MLE 1BAk MLE 1Bck MLE 1Bck MLE 1Bck MLE 1BAk MLE 1Bck MLE 1Bck MLE 1Bck MLE 1BAk MLE 1Bck MLE 1Bck MLE 1Bck MLE Mok 1BXE M0k 1BXE fak 9vbu bjCu MLu 1Bcu MLu 1BAu MLu 1Bcu MLu 1Bcu MLu 1Bcu MLu;;41e5;GH",
+  "Africa/Algiers": "+001212 +0100 0;c.c/0/LMT 9.l/0/PMT 0/0/WET 10/10/WEST 10/0/CET 20/10/CEST;1232323232323232454542423234542324;-3bQ0c.c MDA2.P cNb9.l HA0 19A0 1iM0 11c0 1oo0 Wo0 1rc0 QM0 1EM0 UM0 DA0 Imo0 rd0 De0 9Xz0 1fb0 1ap0 16K0 2yo0 mEp0 hwL0 jxA0 11A0 dDd0 17b0 11B0 1cN0 2Dy0 1cN0 1fB0 1cL0;;26e5;DZ",
+  "Africa/Bissau": "-010220 +0000 0;-12.k/0/LMT -10/0 0/0/GMT;12;-2ldX0 2xoo0;;39e4;GW",
+  "Africa/Cairo": "+020509 +0200 0;25.9/0/LMT 20/0/EET 30/10/EEST;1212121212121212121212121212121212121212121212121212121212121212121212121212121212121212121212121212121212121212121212121212121;-2MBC5.9 1AQM5.9 vb0 1ip0 11z0 1iN0 1nz0 12p0 1pz0 10N0 1pz0 16p0 1jz0 s3d0 Vz0 1oN0 11b0 1oO0 10N0 1pz0 10N0 1pb0 10N0 1pb0 10N0 1pb0 10N0 1pz0 10N0 1pb0 10N0 1pb0 11d0 1oL0 11d0 1pb0 11d0 1oL0 11d0 1oL0 11d0 1oL0 11d0 1pb0 11d0 1oL0 11d0 1oL0 11d0 1oL0 11d0 1pb0 11d0 1oL0 11d0 1oL0 11d0 1oL0 11d0 1pb0 11d0 1oL0 11d0 1WL0 rd0 1Rz0 wp0 1pb0 11d0 1oL0 11d0 1oL0 11d0 1oL0 11d0 1pb0 11d0 1qL0 Xd0 1oL0 11d0 1oL0 11d0 1pb0 11d0 1oL0 11d0 1oL0 11d0 1ny0 11z0 1o10 11z0 1o10 11z0 1o10 11z0 1qN0 11z0 1o10 11z0 1o10 11z0 1o10 11z0 1o10 11z0 1qN0 11z0 1o10 11z0 1o10 WL0 1qN0 Rb0 1wp0 On0 1zd0 Lz0 1EN0 Fb0 c10 8n0 8Nd0 gL0 e10 mn0;;15e6;EG",
+
+  // ...
+
+  "US/Samoa": "Pacific/Pago_Pago",
+  "UTC": "Etc/UTC",
+  "Universal": "Etc/UTC",
+  "W-SU": "Europe/Moscow",
+  "Zulu": "Etc/UTC"
+}
+```
+<!-- cspell:enable -->
+
+The only current metadata keys are `deltaTs`, `leapSeconds`, `version`, and `years`. If any new metadata keys are ever added they will be prefixed with an underscore (`_`). Every other key is the name of an IANA timezone.
+
+• `version`: The tz database release version.
+• `years`: The range of years covered by explicit UTC offset transition times.
+• `deltaTs`: Starting at the year 2020, with one entry per year, the value of "delta T" at the start of each year. Delta T is the difference between UT1 and TDT (Terrestrial Dynamic Time) at the start of the year, also the same as the difference between UT1 and TAI (International Atomic Time) plus 32.184 seconds.
+• `leapSeconds`: This is a list of days, specified as a number of days after January 1, 1970, on which a leap seconds has been added in the second just before the start of the specified day. If a number is negative, the absolute value of that number is the number of days after January 1, 1970 when a negative leap second has just occurred.
+
+### Timezone descriptions
+
+#### Base-60 numbers
+
+For compactness, many of the values in `@tubular/time` timezone descriptions are represented in base 60. The digit values used are as follows:
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`0`-`9`: 0-9
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`a`-`z`: 10-35
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`A`-`X`: 36-59
+
+These numbers can be negative, and can also be fractional, using a ”decimal” point. For all of the values expressed at present, whole numbers are minutes, and the first digit after the ”decimal” point is seconds. For example, `-g.8` means negative 16 minutes, 8 seconds.
+
+#### Not-completely-formal Extended BNF for timezone description syntax
+
+<pre>
+&lt;time_zone> = &lt;basics> ";" &lt;local_time_type> { space &lt;local_time_type> }
+              [ ";" { &lt;ltt_index_60> }
+                [ ";" { &lt;transition_delta> }
+                  [ ";" [ &lt;dst_rules> ]
+                    [ ";" [ &lt;population> ]
+                      [ ";" [ &lt;country_list> ] ] ] ] ] ]
+
+&lt;basics> = &lt;initial_utc_offset> space &lt;current_std_utc_offset> space &lt;current_dst_offset>
+
+&lt;initial_utc_offset> = ( "+" | "-" ) ( hhmm | hhmmss )
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<i>(i.e. decimal hours, minutes, and possibly seconds)</i>
+
+&lt;current_std_utc_offset> = ( "+" | "-" ) ( hhmm | hhmmss )
+
+&lt;current_dst_offset> = [ "-" ] minutes <i>(0 if DST is not currently observed)</i>
+
+&lt;local_time_type> = &lt;utc_offset_60> "/" &lt;dst_offset_60> [ "/" &lt;abbreviation> ]
+
+&lt;utc_offset_60> = <i>Signed base-60 UTC offset.</i>
+
+&lt;utc_offset_60> = <i>Signed base-60 DTS offset, 0 when DST is not in effect.</i>
+
+&lt;abbreviation> = <i>Abbreviation, such as “GMT” or “EDT”, for the local time type.</i>
+
+&lt;ltt_index_60> = <i>1-based base-60 index into local time types for each corresponding transition.</i>
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The first index indicates the initial state of the timezone.
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The second index corresponds to the first listed &lt;transition_delta>.
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The third index corresponds to the second listed &lt;transition_delta>, etc.</i>
+
+&lt;transition_delta> = <i>The first &lt;transition_delta> is a delta from 0, making it an
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;absolute time value (in seconds from the 1970-01-01 UTC epoch) when the first
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;timezone transition takes place. Each subsequent value is the number of seconds
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;after the previous transition when the next transition takes place.</i>
+
+&lt;dst_rules> = <i>See the function</i> <code>toCompactTailRule()</code> <i>in the file</i> <code>tz-rule.ts</code> <i>for more on
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;this format.</i>
+
+&lt;population> = <i>Approximate population of area covered by this timezone.</i>
+
+&lt;country_list> = <i>List of ISO Alpha-2 country codes for countries covered by this timezone.</i>
+</pre>
+
+#### Simple timezone alias
+
+Example:  `'America/Cayman': 'America/Panama',`
+
+Here `America/Cayman` is the alias, and `America/Panama` is the original.
+
+#### Pseudo-alias
+
+Example: `'America/Indianapolis': '!America/New_York',`
+
+`America/Indianapolis` is not a true alias of `America/New_York`, but in this particular instance, `America/Indianapolis` has an identical description which can be shared.
+
+#### Modified pseudo-alias
+
+Example: 'Atlantic/South_Georgia': '!30,GS,America/Noronha',
+
+Here `Atlantic/South_Georgia` shares a timezone description with `America/Noronha`, but with modified metadata for population and country list.
