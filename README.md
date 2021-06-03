@@ -357,9 +357,9 @@ The only current metadata keys are `deltaTs`, `leapSeconds`, `version`, and `yea
 
 For compactness, many of the values in `@tubular/time` timezone descriptions are represented in base 60. The digit values used are as follows:
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`0`-`9`: 0-9
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`a`-`z`: 10-35
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`A`-`X`: 36-59
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`0`-`9`: 0-9<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`a`-`z`: 10-35<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`A`-`X`: 36-59<br>
 
 These numbers can be negative, and they can also be fractional with the use of a ”decimal” point. For all of the values expressed at present, whole numbers are minutes, and the first digit after the ”decimal” point is seconds. For example, `-g.8` means negative 16 minutes, 8 seconds.
 
