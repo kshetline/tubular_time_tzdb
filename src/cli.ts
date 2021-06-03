@@ -195,8 +195,9 @@ async function getUserInput(): Promise<string> {
       }
     }
   }
-  else if (file && !file.includes('.')) {
-    file += ['', '.json', '.js', '.ts', '.txt'][tzOptions.format ?? 0];
+  else if (file) {
+    if (!file.includes('.'))
+      file += ['', '.json', '.js', '.ts', '.txt'][tzOptions.format ?? 0];
 
     if (!options.o && fs.existsSync(file)) {
       process.stdout.write(`File "${file}" already exists. Overwrite it? (y/N)? `);

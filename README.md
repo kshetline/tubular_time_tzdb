@@ -1,11 +1,12 @@
 # @tubular/time-tzdb
 
-**@tubular/time-tzdb** is an IANA timezone compiler, specifically for generating timezone data compatible with **[@tubular/time](https://www.npmjs.com/package/@tubular/time)**, but also capable of generating standard `zic`-style binaries.
+**@tubular/time-tzdb** is an IANA timezone compiler, specifically for generating timezone data compatible with **[@tubular/time](https://www.npmjs.com/package/@tubular/time)**, but also capable of generating standard zoneinfo/`zic`-style binaries.
 
 It can compile timezone source files directly from <https://www.iana.org/time-zones/>, using the latest release or any particular requested version, or from a local `.tar.gz` file specified via file URL.
 
 Options are available for limiting the span of years covered, adjusting and filtering timezones, and choosing different output formats.
 
+<!-- cspell:disable -->
 - [@tubular/time-tzdb](#tubulartime-tzdb)
   - [Requirements](#requirements)
   - [Installation](#installation)
@@ -13,16 +14,17 @@ Options are available for limiting the span of years covered, adjusting and filt
     - [As a library](#as-a-library)
   - [CLI interface](#cli-interface)
   - [JavaScript/TypeScript API](#javascripttypescript-api)
-    - [getTzData](#gettzdata)
+    - [`getTzData`](#gettzdata)
     - [`writeTimezones`](#writetimezones)
   - [Listing available tz database releases](#listing-available-tz-database-releases)
   - [`@tubular/time` data format](#tubulartime-data-format)
     - [Timezone descriptions](#timezone-descriptions)
       - [Base-60 numbers](#base-60-numbers)
-      - [Not-completely-formal Extended BNF for timezone description syntax](#not-completely-formal-extended-bnf-for-timezone-description-syntax)
+      - [Not-entirely-formal Extended BNF for timezone description syntax](#not-entirely-formal-extended-bnf-for-timezone-description-syntax)
       - [Simple timezone alias](#simple-timezone-alias)
       - [Pseudo-alias](#pseudo-alias)
       - [Modified pseudo-alias](#modified-pseudo-alias)
+<!-- cspell:enable -->
 
 ## Requirements
 
@@ -38,11 +40,11 @@ Your system should have a command line `awk` tool installed for full functionali
 
 `npm install @tubular/time-tzdb`
 
+`const { getAvailableVersions, getTzData, writeTimezones`...`} = require('@tubular/time_tzdb');`
+
 `import { getAvailableVersions, getTzData, writeTimezones`...`} from '@tubular/time_tzdb';`
 
 ## CLI interface
-
-`npm install -g @tubular/time-tzdb`
 
 ```text
 Usage: tzc [options] [output_file_name_or_directory]
@@ -92,9 +94,19 @@ Options:
   -,                  Use dash by itself to output to stdout.
 ```
 
+The default output filename, if not specified, is `timezones.`_ext_, where _ext_ is one of `json`, `js`, `ts`, or `txt` depending on the selected output format.
+
+If you specify your own output filename using one of the extensions `json`, `js`, `ts`, or `txt` a matching format will automatically be selected. If you specify no extension, an appropriate extension will be appended.
+
+If you use any of the options `--small`, `--large`, or `--large-alt`, the default root of the output filename for text formats becomes `timezone-small`, `timezone-large`, or `timezone-large-alt` respectively.
+
+For binary output, the default directory is `zoneinfo` in the current working directory. The `-` option for output to stdout does not apply to binary files.
+
+Please read the API description for a more complete understanding of all of the CLI options.
+
 ## JavaScript/TypeScript API
 
-### getTzData
+### `getTzData`
 
 `async function getTzData(options: TzOptions = {}): Promise<any>`
 
@@ -165,15 +177,15 @@ interface TzOptions {
 
 • `callback`: This is an optional callback, used to provide information on the progress of parsing, compiling, and processing timezone data.
 
-• `filtered`: When `true` various obsolete timezones are omitted, such as `America/Knox_IN`, or the various `Etc` timezones.
+• `filtered`: When `true`, various obsolete timezones are omitted, such as `America/Knox_IN`, and the various `Etc` timezones.
 
-`fixRollbacks`: It can be challenging enough when handling Daylight Saving Time (DST) that wall clock time can go backward during the course of a day. There are a few shifts in UTC offset for some timezones, however, where even the calendar date goes backward, such as a case where its the 19th of the month, then the 18th, and then the 19th again, as happens with the unmodified America/Juneau timezone during October 1867.
+`fixRollbacks`: It can be challenging enough when handling Daylight Saving Time (DST) that wall clock time can go backward during the course of a day. There are a few shifts in UTC offsets for some timezones, however, where even the calendar date goes backward, such as a case where the date/time is the 19th of the month, then it’s the 18th, and then it’s the 19th again, as happens with the unmodified America/Juneau timezone during October 1867.
 
 The `fixRollbacks` option adjusts such transitions so that they delayed just enough to avoid backtracking of local calendar dates.
 
-• `minYear` and `maxYear`: This is the range of years covered by the generated data, and it defaults to 1850-2050. Reducing the range can reduce generated data size, particularly when the lower limit is raised closer to current times, as many differently-named timezones share common descriptions.
+• `minYear` and `maxYear`: This is the range of years covered by the generated data, and it defaults to 1850-2050. Reducing the range can reduce generated data size, particularly when the lower limit is raised closer to current times, as many differently-named timezones share common descriptions when earlier historical transitions are omitted.
 
-When the generated data is used by `@tubular/time`, a reduced range does not necessarily eliminate utility outside of that range, in simply makes early times dependent on JavaScript `Intl` support (when available), and future times reliant on rules-based descriptions of Daylight Saving Time transitions.
+When the generated data is used by `@tubular/time`, a reduced range does not necessarily eliminate this utility of the output outside of that range. It simply makes early times dependent on JavaScript `Intl` support (when available), and future times reliant on rules-based descriptions of Daylight Saving Time transitions.
 
 For a few timezones rules-based descriptions are not possible for covering future times, as these timezones are reliant on rules which that cannot be expressed in the `tz database` short of explicitly providing specific DST transition dates and times for each future year. This is the case, for example, when transitions are based on Islamic calendar dates. In such cases DST transitions are reliable only up to `maxYear`.
 
@@ -183,7 +195,7 @@ The future of these separate modes is uncertain, and they are likely to be phase
 
 • `noBackward`: If `true`, timezones aliases defined in the `backward` file are omitted.
 
-• `packrat`: If `true`, extra timezones defined in the `backzone` file are included.
+• `packrat`: If `true`, extra timezone information defined in the `backzone` file is included.
 
 • `preset`: One of four values, `TzPresets.NONE`, `TzPresets.SMALL`, `TzPresets.LARGE`, `TzPresets.LARGE_ALT`, with `TzPresets.NONE` being the defaults.
 
@@ -200,15 +212,15 @@ The future of these separate modes is uncertain, and they are likely to be phase
 
 • `systemV`: If `true`, timezones defined in the `systemv` file are included.
 
-• `urlOrVersion`: If left undefined or null, the latest tz database will be downloaded automatically from <https://www.iana.org/time-zones/repository/tzdata-latest.tar.gz>. Otherwise a particular tz database version can be specified, such as `'2021a'`, or a URL (including file URLs) can be used to specify a particular `.tar.gz` source.
+• `urlOrVersion`: If left undefined or null, the latest tz database will be downloaded automatically from <https://www.iana.org/time-zones/repository/tzdata-latest.tar.gz>. Otherwise a particular tz database version can be specified, such as `'2021a'`, or a URL (including file URLs) can be used to specify a particular `.tar.gz` source file.
 
-• `zoneInfoDir`: This option is for validating this tool's parsing and compilation against `zic` binaries located at the given directory path.
+• `zoneInfoDir`: This option is for validating this tool’s parsing and compilation against zoneinfo/`zic` binaries located at the given directory path.
 
 ### `writeTimezones`
 
 `async function writeTimezones(options: TzOutputOptions = {}): Promise<void>`
 
-This function writes out timezone data in either various text formats, or as `zic` binaries. It includes all of the options available for `getTzData()`, plus the following options:
+This function writes out timezone data in one of various text formats, or as zoneinfo/`zic` binaries. It includes all of the options available for `getTzData()`, plus the following options:
 
 ```typescript
 interface TzOutputOptions extends TzOptions {
@@ -265,7 +277,7 @@ interface TzOutputOptions extends TzOptions {
 
 • `fileStream`: For textual output only, this option specifies the output stream. If not specified, output is sent to `stdout`.
 
-• `format`: One of `TzFormat.BINARY`, `TzFormat.JSON`, `TzFormat.JAVASCRIPT`, `TzFormat.TYPESCRIPT`, `TzFormat.TEXT`, with the default being `TzFormat.JSON`.
+• `format`: One of `TzFormat.BINARY`, `TzFormat.JSON`, `TzFormat.JAVASCRIPT`, `TzFormat.TYPESCRIPT`, or `TzFormat.TEXT`, with the default being `TzFormat.JSON`.
 
 JSON output is as shown in the previous example. JavaScript output is essentially the same, but declared as a module, with single-quoting for strings and some explanatory comments added. TypeScript output is in turn much like JavaScript, but uses `export` module syntax.
 
@@ -290,7 +302,9 @@ JSON output is as shown in the previous example. JavaScript output is essentiall
   Countries: US
 ```
 
-• `includeLeaps`: This option adds leap second information to binary output files. Leap seconds are always included in the JSON, JavaScript, and TypeScript formats.
+A trailing asterisk `*` indication a transition into Daylight Saving Time.
+
+• `includeLeaps`: This option adds leap second information to binary output files. Leap seconds are always included in the JSON, JavaScript, and TypeScript formats regardless of this option.
 
 ## Listing available tz database releases
 
@@ -300,7 +314,7 @@ This function returns a sorted list of tz database release versions, the last of
 
 ## `@tubular/time` data format
 
-Timezone data takes the form of an object with string keys for string values, where each key is either the name of a piece of metadata describing the collection of timezones, or the name of an IANA timezone.
+This variety of timezone data takes the form of an object with string keys and string values, where each key is either the name of a piece of metadata describing the collection of timezones, or the name of an IANA timezone.
 
 Each timezone name is a key to a full timezone description, a simple alias to another timezone, or an alias to another timezone with some variant metadata.
 
@@ -334,8 +348,8 @@ The only current metadata keys are `deltaTs`, `leapSeconds`, `version`, and `yea
 
 • `version`: The tz database release version.
 • `years`: The range of years covered by explicit UTC offset transition times.
-• `deltaTs`: Starting at the year 2020, with one entry per year, the value of "delta T" at the start of each year. Delta T is the difference between UT1 and TDT (Terrestrial Dynamic Time) at the start of the year, also the same as the difference between UT1 and TAI (International Atomic Time) plus 32.184 seconds.
-• `leapSeconds`: This is a list of days, specified as a number of days after January 1, 1970, on which a leap seconds has been added in the second just before the start of the specified day. If a number is negative, the absolute value of that number is the number of days after January 1, 1970 when a negative leap second has just occurred.
+• `deltaTs`: Starting at the year 2020, with one entry per year, the value of "delta T" at the start of each year. Delta T is the difference between UT1 and TDT (Terrestrial Dynamic Time), also the same as the difference between UT1 and TAI (International Atomic Time) plus 32.184 seconds.
+• `leapSeconds`: This is a list of days, specified as a number of days after January 1, 1970, for which a leap seconds has been added in the second just before the start of the specified day. If a number is negative, the absolute value of that number is the number of days after January 1, 1970 when a negative leap second has just occurred.
 
 ### Timezone descriptions
 
@@ -347,9 +361,9 @@ For compactness, many of the values in `@tubular/time` timezone descriptions are
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`a`-`z`: 10-35
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`A`-`X`: 36-59
 
-These numbers can be negative, and can also be fractional, using a ”decimal” point. For all of the values expressed at present, whole numbers are minutes, and the first digit after the ”decimal” point is seconds. For example, `-g.8` means negative 16 minutes, 8 seconds.
+These numbers can be negative, and they can also be fractional with the use of a ”decimal” point. For all of the values expressed at present, whole numbers are minutes, and the first digit after the ”decimal” point is seconds. For example, `-g.8` means negative 16 minutes, 8 seconds.
 
-#### Not-completely-formal Extended BNF for timezone description syntax
+#### Not-entirely-formal Extended BNF for timezone description syntax
 
 <pre>
 &lt;time_zone> = &lt;basics> ";" &lt;local_time_type> { space &lt;local_time_type> }
@@ -370,7 +384,8 @@ These numbers can be negative, and can also be fractional, using a ”decimal”
 
 &lt;local_time_type> = &lt;utc_offset_60> "/" &lt;dst_offset_60> [ "/" &lt;abbreviation> ]
 
-&lt;utc_offset_60> = <i>Signed base-60 UTC offset.</i>
+&lt;utc_offset_60> = <i>Signed base-60 UTC offset, generally positive for east longitude,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;negative for west longitude.</i>
 
 &lt;utc_offset_60> = <i>Signed base-60 DTS offset, 0 when DST is not in effect.</i>
 
@@ -405,10 +420,10 @@ Here `America/Cayman` is the alias, and `America/Panama` is the original.
 
 Example: `'America/Indianapolis': '!America/New_York',`
 
-`America/Indianapolis` is not a true alias of `America/New_York`, but in this particular instance, `America/Indianapolis` has an identical description which can be shared.
+`America/Indianapolis` is not a true alias of `America/New_York`, but in this particular instance, `America/Indianapolis` has an identical timezone description which can be shared.
 
 #### Modified pseudo-alias
 
-Example: 'Atlantic/South_Georgia': '!30,GS,America/Noronha',
+Example: `'Atlantic/South_Georgia': '!30,GS,America/Noronha'`,
 
 Here `Atlantic/South_Georgia` shares a timezone description with `America/Noronha`, but with modified metadata for population and country list.
