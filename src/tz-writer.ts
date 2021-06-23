@@ -81,6 +81,7 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
   const iqt = (options.format > TzFormat.JSON) ? '' : '"';
   const stream = options.fileStream ?? process.stdout;
   const progress = options.callback;
+  let trimMarkers = false;
 
   const report = (phase?: TzPhase, level?: TzMessageLevel, message?: string, n?: number, m?: number): void => {
     if (progress)
@@ -110,6 +111,7 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
       options.roundToMinutes = options.roundToMinutes ?? false;
       options.fixRollbacks = options.fixRollbacks ?? false;
       options.systemV = true;
+      trimMarkers = true;
       break;
 
     case TzPresets.LARGE_ALT:
@@ -120,6 +122,7 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
       options.roundToMinutes = true;
       options.fixRollbacks = true;
       options.systemV = true;
+      trimMarkers = true;
   }
 
   const parser = new IanaZonesAndRulesParser();
@@ -250,7 +253,7 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
   else if (options.format === TzFormat.JAVASCRIPT || options.format === TzFormat.TYPESCRIPT) {
     write('/* eslint-disable quote-props */');
     write('/* cspell:disable */ // noinspection SpellCheckingInspection');
-    write(`const ${variableName} = /* trim-file-start */{ // ${comment}`);
+    write(`const ${variableName} = ${trimMarkers ? '/* trim-file-start */' : ''}{ // ${comment}`);
   }
   else if (options.format === TzFormat.TEXT) {
     write(comment);
@@ -357,7 +360,7 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
   }
 
   if (options.format !== TzFormat.TEXT && options.format !== TzFormat.BINARY) {
-    write('}' + (options.format !== TzFormat.JSON ? '/* trim-file-end */;' : ''));
+    write('}' + (options.format !== TzFormat.JSON && trimMarkers ? '/* trim-file-end */;' : ''));
 
     if (options.format !== TzFormat.JSON) {
       write();
