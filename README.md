@@ -110,7 +110,7 @@ Please read the API description for a more complete understanding of all of the 
 
 `async function getTzData(options: TzOptions = {}): Promise<any>`
 
-This function returns an object containing encoded timezone information for a set of timezones, and other timezone set metadata. This data is in a format meant to be consumed by the `@tubular/time` package.
+This function returns an object (or string — only `TzFormat.JSON` format can be returned as an object) containing encoded timezone information for a set of timezones, and other timezone set metadata. This data is in a format meant to be consumed by the `@tubular/time` package.
 
 Here is a truncated sample of this data:
 
@@ -160,6 +160,7 @@ interface TzOptions {
   callback?: TzCallback,
   filtered?: boolean;
   fixRollbacks?: boolean;
+  format?: TzFormat
   includeLeaps?: boolean,
   maxYear?: number;
   minYear?: number;
@@ -227,7 +228,6 @@ interface TzOutputOptions extends TzOptions {
   bloat?: boolean;
   directory?: string;
   fileStream?: NodeJS.WriteStream,
-  format?: TzFormat
   includeLeaps?: boolean,
 }
 ```

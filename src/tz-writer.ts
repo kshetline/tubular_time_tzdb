@@ -27,6 +27,7 @@ export interface TzOptions {
   callback?: TzCallback,
   filtered?: boolean;
   fixRollbacks?: boolean;
+  format?: TzFormat
   maxYear?: number;
   minYear?: number;
   mode?: TzMode;
@@ -44,7 +45,6 @@ export interface TzOutputOptions extends TzOptions {
   bloat?: boolean;
   directory?: string;
   fileStream?: NodeJS.WriteStream,
-  format?: TzFormat
   includeLeaps?: boolean,
 }
 
@@ -53,9 +53,12 @@ const extendedRegions = /(America\/Argentina|America\/Indiana)\/(.+)/;
 const skippedRegions = /Etc|GB|GB-Eire|GMT0|NZ|NZ-CHAT|SystemV|W-SU|Zulu|Mideast|[A-Z]{3}(\d[A-Z]{3})?/;
 const miscUnique = /CST6CDT|EET|EST5EDT|MST7MDT|PST8PDT|SystemV\/AST4ADT|SystemV\/CST6CDT|SystemV\/EST5EDT|SystemV\/MST7MDT|SystemV\/PST8PDT|SystemV\/YST9YDT|WET/;
 
-export async function getTzData(options: TzOptions = {}): Promise<any> {
+export async function getTzData(options: TzOptions = {}, asString = false): Promise<any> {
   const stream = new Writable();
   const output: string[] = [];
+
+  if (options.format !== TzFormat.JSON)
+    asString = true;
 
   stream.write = (chunk: any): boolean => {
     output.push(chunk.toString());
@@ -65,7 +68,7 @@ export async function getTzData(options: TzOptions = {}): Promise<any> {
   await writeTimezones(Object.assign(
     { fileStream: stream, format: TzFormat.JSON } as TzOutputOptions, options));
 
-  return JSON.parse(output.join(''));
+  return asString ? output.join('') : JSON.parse(output.join(''));
 }
 
 export async function writeTimezones(options: TzOutputOptions = {}): Promise<void> {
@@ -126,30 +129,22 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
   }
 
   const parser = new IanaZonesAndRulesParser();
-  let version: string;
   const singleZone = options.singleRegionOrZone && !MAIN_REGIONS.has(options.singleRegionOrZone) &&
     options.singleRegionOrZone;
   const singleRegion = !singleZone && options.singleRegionOrZone?.toLowerCase();
+  const version = await parser.parseFromOnline({
+    mode: options.mode,
+    noBackward: options.noBackward,
+    roundToMinutes: options.roundToMinutes,
+    packrat: options.packrat,
+    progress,
+    singleRegion,
+    systemV: options.systemV,
+    urlOrVersion: options.urlOrVersion
+  });
 
-  try {
-    version = await parser.parseFromOnline({
-      mode: options.mode,
-      noBackward: options.noBackward,
-      roundToMinutes: options.roundToMinutes,
-      packrat: options.packrat,
-      progress,
-      singleRegion,
-      systemV: options.systemV,
-      urlOrVersion: options.urlOrVersion
-    });
-
-    if (!singleZone)
-      report(TzPhase.PARSE, TzMessageLevel.INFO, version);
-  }
-  catch (err) {
-    console.error(err);
-    process.exit(1);
-  }
+  if (!singleZone)
+    report(TzPhase.PARSE, TzMessageLevel.INFO, version);
 
   let comment = `tz database version: ${version}, years ${minYear}-${maxYear}`;
 

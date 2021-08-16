@@ -107,7 +107,7 @@ export async function getByUrlOrVersion(urlOrVersion?: string, progress?: TzCall
     extract.on('finish', () => error ? reject(makeError(error)) : resolve(result));
     extract.on('error', err => {
       if (/unexpected end of data|invalid tar header/i.test(err.message) &&
-          (regionCount >= TZ_REGION_FILES.size || sourceCount >= TZ_SOURCE_FILES.size))
+          (regionCount >= MAIN_REGIONS.size || sourceCount >= TZ_SOURCE_FILES.size))
         resolve(result);
       else
         reject(makeError(err));
