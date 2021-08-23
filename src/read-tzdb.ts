@@ -37,8 +37,6 @@ function makeError(error: any): Error {
 export async function getByUrlOrVersion(urlOrVersion?: string, progress?: TzCallback): Promise<TzData> {
   let url: string;
   let requestedVersion: string;
-  let regionCount = 0;
-  let sourceCount = 0;
 
   if (!urlOrVersion)
     url = DEFAULT_URL;
@@ -66,11 +64,6 @@ export async function getByUrlOrVersion(urlOrVersion?: string, progress?: TzCall
 
       if (progress && sourceName !== 'version')
         progress(TzPhase.EXTRACT, TzMessageLevel.INFO, `Extracting ${sourceName}`);
-
-      if (sourceName.endsWith('.zi'))
-        ++sourceCount;
-      else if (TZ_REGION_FILES.has(sourceName))
-        ++regionCount;
 
       stream.on('data', chunk => data += chunk.toString());
       stream.on('error', err => error = err);
@@ -106,8 +99,9 @@ export async function getByUrlOrVersion(urlOrVersion?: string, progress?: TzCall
     stream.pipe(extract);
     extract.on('finish', () => error ? reject(makeError(error)) : resolve(result));
     extract.on('error', err => {
-      if (/unexpected end of data|invalid tar header/i.test(err.message) &&
-          (regionCount >= MAIN_REGIONS.size || sourceCount >= TZ_SOURCE_FILES.size))
+      // tar-stream has a problem with the format of a few of the tar files
+      // dealt with here, which nevertheless are valid archives.
+      if (/unexpected end of data|invalid tar header/i.test(err.message))
         resolve(result);
       else
         reject(makeError(err));
@@ -119,7 +113,7 @@ export async function getLatest(progress?: TzCallback): Promise<TzData> {
   return getByUrlOrVersion(null, progress);
 }
 
-export async function getAvailableVersions(): Promise<string[]> {
+export async function getAvailableVersions(countCodeVersions = false): Promise<string[]> {
   const parsed = new URL(ALL_RELEASES);
   const port = Number(parsed.port || 21);
   const options: PromiseFtp.Options = { host: parsed.hostname, port, connTimeout: 30000, pasvTimeout: 30000 };
@@ -130,8 +124,12 @@ export async function getAvailableVersions(): Promise<string[]> {
     .then(list => {
       ftp.end();
 
-      return list.map(item => /^tzdata(\d{4}\w+)\.tar.gz$/.exec(item.name))
-        .filter(match => !!match).map(match => match[1]);
+      const matcher = countCodeVersions ?
+        /^tz(?:code|data)(\d\d(?:\d\d)?[a-z][a-z]?)\.tar.gz$/ : /^tzdata(\d\d(?:\d\d)?[a-z][a-z]?)\.tar.gz$/;
+      const versionSet = new Set<string>(list.map(item => matcher.exec(item.name))
+        .filter(match => !!match).map(match => match[1]));
+
+      return Array.from(versionSet).map(v => /^\d{4}/.test(v) ? v : '19' + v).sort();
     })
     .catch(err => makeError(err));
 }

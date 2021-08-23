@@ -24,10 +24,15 @@ describe('Reading HTTP timezone data', () => {
   it('should list all versions', async function () {
     this.timeout(60000);
 
-    const versions = await getAvailableVersions();
+    let versions = await getAvailableVersions();
 
     expect(versions.includes('1998i')).to.be.true;
     expect(versions.includes('2021a')).to.be.true;
     expect(versions.includes('1884q')).to.be.false;
+    expect(versions.includes('1994c')).to.be.false;
+
+    versions = await getAvailableVersions(true);
+
+    expect(versions.includes('1994c')).to.be.true;
   });
 });
