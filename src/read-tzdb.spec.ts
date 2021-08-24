@@ -34,5 +34,6 @@ describe('Reading HTTP timezone data', () => {
     versions = await getAvailableVersions(true);
 
     expect(versions.includes('1994c')).to.be.true;
+    expect(versions.includes('1993b')).to.be.true;
   });
 });

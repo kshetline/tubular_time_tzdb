@@ -1,8 +1,7 @@
-import { requestBinary } from 'by-request';
-import PromiseFtp from 'promise-ftp';
+import { requestBinary, requestText } from 'by-request';
+import { spawn } from 'child_process';
 import { Readable } from 'stream';
 import tar from 'tar-stream';
-import { URL } from 'url';
 import { TzCallback, TzMessageLevel, TzPhase } from './tz-writer';
 import { asLines, toNumber } from '@tubular/util';
 
@@ -21,7 +20,7 @@ const deltaTs = '69.36 69.36 69.45';
 
 export const DEFAULT_URL = 'https://www.iana.org/time-zones/repository/tzdata-latest.tar.gz';
 const URL_TEMPLATE_FOR_VERSION = 'https://data.iana.org/time-zones/releases/tzdata{version}.tar.gz';
-const ALL_RELEASES = 'ftp://ftp.iana.org/tz/releases/';
+const ALL_RELEASES = 'https://data.iana.org/time-zones/releases/';
 const TZ_SOURCE_FILES = new Set(['main.zi', 'rearguard.zi', 'vanguard.zi']);
 export const MAIN_REGIONS = new Set(['africa', 'antarctica', 'asia', 'australasia', 'europe', 'northamerica',
                                         'pacificnew', 'southamerica', 'etcetera']);
@@ -37,6 +36,7 @@ function makeError(error: any): Error {
 export async function getByUrlOrVersion(urlOrVersion?: string, progress?: TzCallback): Promise<TzData> {
   let url: string;
   let requestedVersion: string;
+  let xCompress = false;
 
   if (!urlOrVersion)
     url = DEFAULT_URL;
@@ -44,13 +44,39 @@ export async function getByUrlOrVersion(urlOrVersion?: string, progress?: TzCall
     url = urlOrVersion;
   else {
     requestedVersion = urlOrVersion;
-    url = URL_TEMPLATE_FOR_VERSION.replace('{version}', urlOrVersion);
+
+    if (requestedVersion.length >= 5 && requestedVersion < '1996l')
+      requestedVersion = requestedVersion.substr(2); // Switch to two-digit year
+
+    url = URL_TEMPLATE_FOR_VERSION.replace('{version}', requestedVersion);
+
+    if (urlOrVersion < '1993g') {
+      xCompress = true;
+      url = url.replace(/\.gz$/, '.Z');
+    }
+
+    requestedVersion = urlOrVersion;
   }
 
   if (progress)
     progress(TzPhase.DOWNLOAD, TzMessageLevel.INFO);
 
-  const data = await requestBinary(url, { headers: { 'User-Agent': 'curl/7.64.1' }, autoDecompress: true });
+  let data = await requestBinary(url, { headers: { 'User-Agent': 'curl/7.64.1' }, autoDecompress: !xCompress });
+
+  if (xCompress) {
+    // zlib.gunzip chokes on this file format, but command-line gzip handles it well.
+    data = await new Promise<Buffer>((resolve, reject) => {
+      const gzipProc = spawn('gzip', ['-dc']);
+      let tarContent = Buffer.alloc(0);
+      const stream = Readable.from(data);
+
+      stream.pipe(gzipProc.stdin);
+      gzipProc.stdout.on('data', d => tarContent = Buffer.concat([tarContent, d], tarContent.length + d.length));
+      gzipProc.stdout.on('error', err => reject(makeError(err)));
+      gzipProc.stdout.on('end', () => resolve(tarContent));
+   });
+  }
+
   const extract = tar.extract({ allowUnknownFormat: true });
   const stream = Readable.from(data);
   const result: TzData = { version: requestedVersion || 'unknown', deltaTs, sources: {} };
@@ -114,22 +140,15 @@ export async function getLatest(progress?: TzCallback): Promise<TzData> {
 }
 
 export async function getAvailableVersions(countCodeVersions = false): Promise<string[]> {
-  const parsed = new URL(ALL_RELEASES);
-  const port = Number(parsed.port || 21);
-  const options: PromiseFtp.Options = { host: parsed.hostname, port, connTimeout: 30000, pasvTimeout: 30000 };
-  const ftp = new PromiseFtp();
+  const releaseSet = new Set<string>((await requestText(ALL_RELEASES))
+    .split(/(href="tz[^"]+(?="))/g).filter(s => s.startsWith('href="tz')).map(s => s.substr(6))
+    .map(s => (/^tzdata(\d\d(?:\d\d)?[a-z][a-z]?)\.tar.(?:gz|Z)$/.exec(s) ?? [])[1] ||
+      (countCodeVersions && (/^tzcode(\d\d(?:\d\d)?[a-z][a-z]?)\.tar.(?:gz|Z)$/.exec(s) ?? [])[1]))
+    .filter(s => !!s));
 
-  return ftp.connect(options)
-    .then(() => ftp.list(parsed.pathname))
-    .then(list => {
-      ftp.end();
+  // Treat the special code-only case of tzcode93.tar.Z as release 1993a
+  if (countCodeVersions)
+    releaseSet.add('1993a');
 
-      const matcher = countCodeVersions ?
-        /^tz(?:code|data)(\d\d(?:\d\d)?[a-z][a-z]?)\.tar.gz$/ : /^tzdata(\d\d(?:\d\d)?[a-z][a-z]?)\.tar.gz$/;
-      const versionSet = new Set<string>(list.map(item => matcher.exec(item.name))
-        .filter(match => !!match).map(match => match[1]));
-
-      return Array.from(versionSet).map(v => /^\d{4}/.test(v) ? v : '19' + v).sort();
-    })
-    .catch(err => makeError(err));
+  return Array.from(releaseSet).map(v => /^\d{4}/.test(v) ? v : '19' + v).sort();
 }
