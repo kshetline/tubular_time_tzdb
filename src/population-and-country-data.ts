@@ -499,6 +499,7 @@ export const populationAndCountryData = {
   'Pacific/Guam': '17e4;GU MP',
   'Pacific/Honolulu': '37e4;UM US',
   'Pacific/Johnston': '37e4;UM US',
+  'Pacific/Kanton': '1;KI',
   'Pacific/Kiritimati': '51e2;KI',
   'Pacific/Kosrae': '66e2;FM',
   'Pacific/Kwajalein': '14e3;MH',

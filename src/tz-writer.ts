@@ -104,6 +104,7 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
       options.roundToMinutes = options.roundToMinutes ?? false;
       options.fixRollbacks = options.fixRollbacks ?? false;
       options.systemV = true;
+      trimMarkers = true;
       break;
 
     case TzPresets.LARGE:
@@ -355,7 +356,7 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
   }
 
   if (options.format !== TzFormat.TEXT && options.format !== TzFormat.BINARY) {
-    write('}' + (options.format !== TzFormat.JSON && trimMarkers ? '/* trim-file-end */;' : ''));
+    write('}' + (options.format !== TzFormat.JSON && trimMarkers ? '/* trim-file-end */;' : ';'));
 
     if (options.format !== TzFormat.JSON) {
       write();

@@ -1,6 +1,6 @@
 {
   "name": "@tubular/time-tzdb",
-  "version": "1.1.0-beta.10",
+  "version": "1.1.0",
   "description": "Reads, parses, and compacts IANA timezones",
   "main": "dist/index.js",
   "bin": {
@@ -16,9 +16,9 @@
   "author": "Kerry Shetline <kerry@shetline.com>",
   "license": "MIT",
   "dependencies": {
-    "@tubular/math": "^3.0.1",
-    "@tubular/time": "^3.0.3",
-    "@tubular/util": "^4.0.1",
+    "@tubular/math": "^3.1.0",
+    "@tubular/time": "^3.5.3",
+    "@tubular/util": "^4.4.0",
     "by-request": "^1.2.7",
     "commander": "^7.2.0",
     "rimraf": "^3.0.2",
