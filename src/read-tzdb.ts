@@ -16,7 +16,7 @@ export interface TzData {
 // As ΔT = 32.184 (for TDT - TAI) + (TAI - UTC)† - (UT1-UTC)
 // † 37 seconds on 2021-04-28, as it will likely remain for some time.
 // TODO: Perhaps extract from a remote data source later
-const deltaTs = '69.36 69.36 69.45';
+const deltaTs = '69.36 69.36 69.45 69.29'; // Last value approximate, projection from 2021-10-16
 
 export const DEFAULT_URL = 'https://www.iana.org/time-zones/repository/tzdata-latest.tar.gz';
 const URL_TEMPLATE_FOR_VERSION = 'https://data.iana.org/time-zones/releases/tzdata{version}.tar.gz';
