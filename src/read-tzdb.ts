@@ -12,11 +12,15 @@ export interface TzData {
   sources: Record<string, string>;
 }
 
-// Get additional data from https://www.iers.org/IERS/EN/DataProducts/EarthOrientationData/eop.html
-// As ΔT = 32.184 (for TDT - TAI) + (TAI - UTC)† - (UT1-UTC)
-// † 37 seconds on 2021-04-28, as it will likely remain for some time.
+// ΔT at start of year, one value per year starting at 2020.
+// Additional data from https://datacenter.iers.org/data/latestVersion/finals.data.iau2000.txt,
+//   as linked to from https://www.iers.org/IERS/EN/DataProducts/EarthOrientationData/eop.html.
+// ΔT = 32.184† + (TAI - UTC)‡ - (UT1 - UTC)§
+// † TT - TAI (Terrestrial Time minus International Atomic Time), a constant value.
+// ‡ 37 seconds as of 2021-11-21, as it will likely remain for some time.
+// § From finals.data, numeric value starting at 59th character column.
 // TODO: Perhaps extract from a remote data source later
-const deltaTs = '69.36 69.36 69.45 69.29'; // Last value approximate, projection from 2021-10-16
+const deltaTs = '69.36 69.36 69.28'; // Last value approximate, projection from 2021-11-21
 
 export const DEFAULT_URL = 'https://www.iana.org/time-zones/repository/tzdata-latest.tar.gz';
 const URL_TEMPLATE_FOR_VERSION = 'https://data.iana.org/time-zones/releases/tzdata{version}.tar.gz';
