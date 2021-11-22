@@ -40,6 +40,9 @@ describe('Reading HTTP timezone data', () => {
   it('should get remote ΔT values', async function () {
     this.timeout(60000);
 
-    await getRemoteDeltaTs();
+    const values = await getRemoteDeltaTs();
+
+    expect(values.length).to.be.gte(3);
+    expect(!values.find(n => n < 68)).to.be.true;
   });
 });

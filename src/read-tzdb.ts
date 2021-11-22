@@ -14,22 +14,12 @@ export interface TzData {
   sources: Record<string, string>;
 }
 
-// ΔT at start of year, one value per year starting at 2020.
-// Additional data from https://datacenter.iers.org/data/latestVersion/finals.data.iau2000.txt,
-//   as linked to from https://www.iers.org/IERS/EN/DataProducts/EarthOrientationData/eop.html.
-// ΔT = 32.184† + (TAI - UTC)‡ - (UT1 - UTC)§
-// † TT - TAI (Terrestrial Time minus International Atomic Time), a constant value.
-// ‡ 37 seconds as of 2021-11-21, as it will likely remain for some time.
-// § From finals.data, numeric value starting at 59th character column.
-// TODO: Perhaps extract from a remote data source later
-const deltaTs = '69.36 69.36 69.28'; // Last value approximate, projection from 2021-11-21
-
 export const DEFAULT_URL = 'https://www.iana.org/time-zones/repository/tzdata-latest.tar.gz';
 const URL_TEMPLATE_FOR_VERSION = 'https://data.iana.org/time-zones/releases/tzdata{version}.tar.gz';
 const ALL_RELEASES = 'https://data.iana.org/time-zones/releases/';
 const TZ_SOURCE_FILES = new Set(['main.zi', 'rearguard.zi', 'vanguard.zi']);
 export const MAIN_REGIONS = new Set(['africa', 'antarctica', 'asia', 'australasia', 'europe', 'northamerica',
-                                        'pacificnew', 'southamerica', 'etcetera']);
+                                     'pacificnew', 'southamerica', 'etcetera']);
 export const TZ_REGION_FILES = new Set([...Array.from(MAIN_REGIONS), 'systemv', 'backward', 'backzone']);
 const TZ_EXTENDED_SOURCE_FILES = new Set([...TZ_SOURCE_FILES, ...TZ_REGION_FILES])
   .add('leap-seconds.list').add('version').add('ziguard.awk');
@@ -89,6 +79,7 @@ export async function getByUrlOrVersion(urlOrVersion?: string, progress?: TzCall
 
   const extract = tar.extract({ allowUnknownFormat: true });
   const stream = Readable.from(data);
+  const deltaTs = (await getRemoteDeltaTs(progress)).map(dt => dt.toFixed(2)).join(' ');
   const result: TzData = { version: requestedVersion || 'unknown', deltaTs, sources: {} };
   let error: any;
 
@@ -163,48 +154,57 @@ export async function getAvailableVersions(countCodeVersions = false): Promise<s
   return Array.from(releaseSet).map(v => /^\d{4}/.test(v) ? v : '19' + v).sort();
 }
 
-export async function getRemoteDeltaTs(): Promise<number[]> {
-  const leapSecondData = asLines(await requestText(LEAP_SECOND_URL, { headers: { 'User-Agent': FAKE_USER_AGENT } }))
-    .filter(line => TIME_AND_DELTA.test(line)).reverse();
-  const deltaTData = asLines(await requestText(DELTA_T_URL, { headers: { 'User-Agent': FAKE_USER_AGENT } }));
-  const lastYear = new DateTime().add('months', 3).wallTime.year % 100;
-  const leaps: number[][] = [];
-  const deltaTs = [];
+// ΔT at start of year, one value per year starting at 2020.
+// Data from https://datacenter.iers.org/data/latestVersion/finals.data.iau2000.txt,
+//   as linked to from https://www.iers.org/IERS/EN/DataProducts/EarthOrientationData/eop.html.
+// ΔT = 32.184† + (TAI - UTC)‡ - (UT1 - UTC)§
+// † TT - TAI (Terrestrial Time minus International Atomic Time), a constant value.
+// ‡ 37 seconds as of 2021-11-21, as it will likely remain for some time.
+// § From finals.data, numeric value starting at 59th character column.
 
-  for (const line of leapSecondData) {
-    const $ = TIME_AND_DELTA.exec(line);
-    leaps.push([div_rd(toNumber($[1]) + NTP_BASE, 86400), toNumber($[2])]);
-  }
+export async function getRemoteDeltaTs(progress?: TzCallback): Promise<number[]> {
+  try {
+    const leapSecondData = asLines(await requestText(LEAP_SECOND_URL, { headers: { 'User-Agent': FAKE_USER_AGENT } }))
+      .filter(line => TIME_AND_DELTA.test(line)).reverse();
+    const deltaTData = asLines(await requestText(DELTA_T_URL, { headers: { 'User-Agent': FAKE_USER_AGENT } }));
+    const lastYear = new DateTime().add('months', 3).wallTime.year % 100;
+    const leaps: number[][] = [];
+    const deltaTs = [];
 
-  console.log(leaps);
-
-  for (const line of deltaTData) {
-    const mjd = toNumber(line.substr(7, 5));
-
-    if (mjd < 48622 /* 58849 */ || line.substr(2, 4) !== ' 1 1')
-      continue;
-
-    let year = toNumber(line.substr(0, 2));
-
-    if (year > 23) year -= 100;
-
-    if (year <= lastYear) {
-      const dut = toNumber(line.substr(58).replace(/\s.*$/, ''));
-      const leapsForYear = getLeapsForYear(year + 2000, leaps);
-
-      console.log(line);
-      console.log(year, mjd, dut, leapsForYear);
-      deltaTs.push(32.184 + leapsForYear - dut);
+    for (const line of leapSecondData) {
+      const $ = TIME_AND_DELTA.exec(line);
+      leaps.push([div_rd(toNumber($[1]) + NTP_BASE, 86400), toNumber($[2])]);
     }
 
-    if (year >= lastYear)
-      break;
+    for (const line of deltaTData) {
+      const mjd = toNumber(line.substr(7, 5));
+
+      if (mjd < 58849 || line.substr(2, 4) !== ' 1 1')
+        continue;
+
+      const year = toNumber(line.substr(0, 2));
+
+      if (year <= lastYear) {
+        const dut = toNumber(line.substr(58).trim().replace(/\s.*$/, ''));
+        const leapsForYear = getLeapsForYear(year + 2000, leaps);
+
+        deltaTs.push(32.184 + leapsForYear - dut);
+      }
+
+      if (year >= lastYear)
+        break;
+    }
+
+    return deltaTs;
+  }
+  catch (e) {
+    if (progress) {
+      progress(TzPhase.DOWNLOAD, TzMessageLevel.ERROR, `Delta-T error: ${e.message || e.toString()}`);
+      progress(TzPhase.DOWNLOAD, TzMessageLevel.WARN, 'Using predefined delta-T values.');
+    }
   }
 
-  console.log(deltaTs);
-  console.log(deltaTs.map(n => n.toFixed(2)).join(', '));
-
-  return deltaTs;
+  return [69.36, 69.36, 69.28];
 }
 
 function getLeapsForYear(year: number, leaps: number[][]): number {
