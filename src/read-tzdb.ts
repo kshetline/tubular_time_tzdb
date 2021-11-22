@@ -4,6 +4,8 @@ import { Readable } from 'stream';
 import tar from 'tar-stream';
 import { TzCallback, TzMessageLevel, TzPhase } from './tz-writer';
 import { asLines, toNumber } from '@tubular/util';
+import { DateTime } from '@tubular/time';
+import { div_rd } from '@tubular/math';
 
 export interface TzData {
   version: string;
@@ -32,6 +34,10 @@ export const TZ_REGION_FILES = new Set([...Array.from(MAIN_REGIONS), 'systemv', 
 const TZ_EXTENDED_SOURCE_FILES = new Set([...TZ_SOURCE_FILES, ...TZ_REGION_FILES])
   .add('leap-seconds.list').add('version').add('ziguard.awk');
 const NTP_BASE = -2_208_988_800;
+const FAKE_USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:94.0) Gecko/20100101 Firefox/94.0';
+export const DELTA_T_URL = 'https://datacenter.iers.org/data/latestVersion/finals.data.iau2000.txt';
+export const LEAP_SECOND_URL = 'https://hpiers.obspm.fr/iers/bul/bulc/ntp/leap-seconds.list';
+const TIME_AND_DELTA = /^(\d{10,})\s+(\d{2,4})\s*#\s*1\s+[A-Za-z]{3}\s+\d{4}/;
 
 function makeError(error: any): Error {
   return error instanceof Error ? error : new Error(error.toString());
@@ -155,4 +161,59 @@ export async function getAvailableVersions(countCodeVersions = false): Promise<s
     releaseSet.add('1993a');
 
   return Array.from(releaseSet).map(v => /^\d{4}/.test(v) ? v : '19' + v).sort();
+}
+
+export async function getRemoteDeltaTs(): Promise<number[]> {
+  const leapSecondData = asLines(await requestText(LEAP_SECOND_URL, { headers: { 'User-Agent': FAKE_USER_AGENT } }))
+    .filter(line => TIME_AND_DELTA.test(line)).reverse();
+  const deltaTData = asLines(await requestText(DELTA_T_URL, { headers: { 'User-Agent': FAKE_USER_AGENT } }));
+  const lastYear = new DateTime().add('months', 3).wallTime.year % 100;
+  const leaps: number[][] = [];
+  const deltaTs = [];
+
+  for (const line of leapSecondData) {
+    const $ = TIME_AND_DELTA.exec(line);
+    leaps.push([div_rd(toNumber($[1]) + NTP_BASE, 86400), toNumber($[2])]);
+  }
+
+  console.log(leaps);
+
+  for (const line of deltaTData) {
+    const mjd = toNumber(line.substr(7, 5));
+
+    if (mjd < 48622 /* 58849 */ || line.substr(2, 4) !== ' 1 1')
+      continue;
+
+    let year = toNumber(line.substr(0, 2));
+
+    if (year > 23) year -= 100;
+
+    if (year <= lastYear) {
+      const dut = toNumber(line.substr(58).replace(/\s.*$/, ''));
+      const leapsForYear = getLeapsForYear(year + 2000, leaps);
+
+      console.log(line);
+      console.log(year, mjd, dut, leapsForYear);
+      deltaTs.push(32.184 + leapsForYear - dut);
+    }
+
+    if (year >= lastYear)
+      break;
+  }
+
+  console.log(deltaTs);
+  console.log(deltaTs.map(n => n.toFixed(2)).join(', '));
+
+  return deltaTs;
+}
+
+function getLeapsForYear(year: number, leaps: number[][]): number {
+  const dayNum = new DateTime([year, 1, 1], 'UTC').wallTime.n;
+
+  for (const [n, leapValue] of leaps) {
+    if (dayNum >= n)
+      return leapValue;
+  }
+
+  return 37;
 }

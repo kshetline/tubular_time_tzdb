@@ -1,6 +1,6 @@
 import chai, { expect } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
-import { getAvailableVersions, getByUrlOrVersion, getLatest } from './read-tzdb';
+import { getAvailableVersions, getByUrlOrVersion, getLatest, getRemoteDeltaTs } from './read-tzdb';
 
 chai.use(chaiAsPromised);
 chai.should();
@@ -35,5 +35,11 @@ describe('Reading HTTP timezone data', () => {
 
     expect(versions.includes('1994c')).to.be.true;
     expect(versions.includes('1993b')).to.be.true;
+  });
+
+  it('should get remote ΔT values', async function () {
+    this.timeout(60000);
+
+    await getRemoteDeltaTs();
   });
 });
