@@ -356,7 +356,8 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
   }
 
   if (options.format !== TzFormat.TEXT && options.format !== TzFormat.BINARY) {
-    write('}' + (options.format !== TzFormat.JSON && trimMarkers ? '/* trim-file-end */;' : ';'));
+    write('}' + (options.format !== TzFormat.JSON && trimMarkers ? '/* trim-file-end */;' :
+      options.format === TzFormat.JSON ? '' : ';'));
 
     if (options.format !== TzFormat.JSON) {
       write();
