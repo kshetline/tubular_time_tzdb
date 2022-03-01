@@ -102,7 +102,7 @@ If you use any of the options `--small`, `--large`, or `--large-alt`, the defaul
 
 For binary output, the default directory is `zoneinfo` in the current working directory. The `-` option for output to stdout does not apply to binary files.
 
-Please read the API description for a more complete understanding of all of the CLI options.
+Please read the API description for a more complete understanding of all the CLI options.
 
 ## JavaScript/TypeScript API
 
@@ -110,7 +110,7 @@ Please read the API description for a more complete understanding of all of the 
 
 `async function getTzData(options: TzOptions = {}): Promise<any>`
 
-This function returns an object containing encoded timezone information for a set of timezones, and other timezone set metadata. This data is in a format meant to be consumed by the `@tubular/time` package.
+This function returns an object (or string — only `TzFormat.JSON` format can be returned as an object) containing encoded timezone information for a set of timezones, and other timezone set metadata. This data is in a format meant to be consumed by the `@tubular/time` package.
 
 Here is a truncated sample of this data:
 
@@ -160,6 +160,7 @@ interface TzOptions {
   callback?: TzCallback,
   filtered?: boolean;
   fixRollbacks?: boolean;
+  format?: TzFormat
   includeLeaps?: boolean,
   maxYear?: number;
   minYear?: number;
@@ -185,7 +186,7 @@ The `fixRollbacks` option adjusts such transitions so that they delayed just eno
 
 • `minYear` and `maxYear`: This is the range of years covered by the generated data, and it defaults to 1850-2050. Reducing the range can reduce generated data size, particularly when the lower limit is raised closer to current times, as many differently-named timezones share common descriptions when earlier historical transitions are omitted.
 
-When the generated data is used by `@tubular/time`, a reduced range does not necessarily eliminate this utility of the output outside of that range. It simply makes early times dependent on JavaScript `Intl` support (when available), and future times reliant on rules-based descriptions of Daylight Saving Time transitions.
+When the generated data is used by `@tubular/time`, a reduced range does not necessarily eliminate this utility of the output outside that range. It simply makes early times dependent on JavaScript `Intl` support (when available), and future times reliant on rules-based descriptions of Daylight Saving Time transitions.
 
 For a few timezones rules-based descriptions are not possible for covering future times, as these timezones are reliant on rules which that cannot be expressed in the `tz database` short of explicitly providing specific DST transition dates and times for each future year. This is the case, for example, when transitions are based on Islamic calendar dates. In such cases DST transitions are reliable only up to `maxYear`.
 
@@ -208,11 +209,11 @@ The future of these separate modes is uncertain, and they are likely to be phase
 
 • `roundToMinutes`: If `true`, UTC offsets which are not in whole minutes are rounded to the nearest minute.
 
-• `singleRegionOrZone`: Normally all timezones are processed at once. You can, however, generate data for just a single timezone by specifying the name of that timezone with this option, or you can specify a region such as `'africa'` or `'southamerica'` to get all of the timezones for just that region.
+• `singleRegionOrZone`: Normally all timezones are processed at once. You can, however, generate data for just a single timezone by specifying the name of that timezone with this option, or you can specify a region such as `'africa'` or `'southamerica'` to get all the timezones for just that region.
 
 • `systemV`: If `true`, timezones defined in the `systemv` file are included.
 
-• `urlOrVersion`: If left undefined or null, the latest tz database will be downloaded automatically from <https://www.iana.org/time-zones/repository/tzdata-latest.tar.gz>. Otherwise a particular tz database version can be specified, such as `'2021a'`, or a URL (including file URLs) can be used to specify a particular `.tar.gz` source file.
+• `urlOrVersion`: If left undefined or null, the latest tz database will be downloaded automatically from <https://www.iana.org/time-zones/repository/tzdata-latest.tar.gz>. Otherwise, a particular tz database version can be specified, such as `'2021a'`, or a URL (including file URLs) can be used to specify a particular `.tar.gz` source file.
 
 • `zoneInfoDir`: This option is for validating this tool’s parsing and compilation against zoneinfo/`zic` binaries located at the given directory path.
 
@@ -220,14 +221,13 @@ The future of these separate modes is uncertain, and they are likely to be phase
 
 `async function writeTimezones(options: TzOutputOptions = {}): Promise<void>`
 
-This function writes out timezone data in one of various text formats, or as zoneinfo/`zic` binaries. It includes all of the options available for `getTzData()`, plus the following options:
+This function writes out timezone data in one of various text formats, or as zoneinfo/`zic` binaries. It includes all the options available for `getTzData()`, plus the following options:
 
 ```typescript
 interface TzOutputOptions extends TzOptions {
   bloat?: boolean;
   directory?: string;
   fileStream?: NodeJS.WriteStream,
-  format?: TzFormat
   includeLeaps?: boolean,
 }
 ```
@@ -361,7 +361,7 @@ For compactness, many of the values in `@tubular/time` timezone descriptions are
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`a`-`z`: 10-35<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`A`-`X`: 36-59<br>
 
-These numbers can be negative, and they can also be fractional with the use of a ”decimal” point. For all of the values expressed at present, whole numbers are minutes, and the first digit after the ”decimal” point is seconds. For example, `-g.8` means negative 16 minutes, 8 seconds.
+These numbers can be negative, and they can also be fractional with the use of a “decimal” point. For all the values expressed at present, whole numbers are minutes, and the first digit after the “decimal” point is seconds. For example, `-g.8` means negative 16 minutes, 8 seconds.
 
 #### Not-entirely-formal Extended BNF for timezone description syntax
 

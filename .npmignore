@@ -14,3 +14,5 @@
 foo.*
 /zoneinfo
 /test-data
+.markdownlint.json
+.vscode/settings.json

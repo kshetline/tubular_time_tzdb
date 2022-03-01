@@ -5,7 +5,7 @@ import { isObject } from '@tubular/util';
 
 export class TzTransition {
   public rule?: TzRule;
-  public clockType?: ClockType
+  public clockType?: ClockType;
 
   constructor(
     public time: number, // in seconds from epoch

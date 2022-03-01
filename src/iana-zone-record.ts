@@ -37,6 +37,11 @@ export class IanaZoneRecord {
 
     const zoneRec = new IanaZoneRecord();
 
+    // Older data (pre-1996k) contains quoted groups like `"EET DST"` which shouldn't get split,
+    // but rather treated as `EET/DST`.
+    if (line.includes('"'))
+      line = line.replace(/".*?"/g, match => match.substr(1, match.length - 2).replace(/ /g, '/'));
+
     parts = line.split(' ');
     zoneRec.utcOffset = parseTimeOffset(parts[0], roundToMinutes);
     zoneRec.rules = (parts[1] === '-' ? null : parts[1]);

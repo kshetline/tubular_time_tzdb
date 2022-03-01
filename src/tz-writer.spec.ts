@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { getAvailableVersions } from './read-tzdb';
-import { getTzData, TzOptions, TzPresets } from './tz-writer';
+import { getTzData, TzFormat, TzOptions, TzOutputOptions, TzPresets } from './tz-writer';
 
 // No bad versions I can't currently manage to read, although a few require workarounds.
 const badVersions = [];
@@ -27,5 +27,18 @@ describe('TzWriter', () => {
         expect(data.version).to.equal(version);
       }
     }
+  });
+
+  it('should properly format timezone data', async function () {
+    this.timeout(60000);
+
+    const options: TzOutputOptions = {
+      format: TzFormat.JSON,
+      singleRegionOrZone: 'America/New_York'
+    };
+
+    expect(async () => JSON.parse(await getTzData(options))).not.to.throw;
+    options.format = TzFormat.JAVASCRIPT;
+    expect(await getTzData(options)).includes('Object.freeze(tzData);');
   });
 });
