@@ -25,7 +25,7 @@ const TZ_EXTENDED_SOURCE_FILES = new Set([...TZ_SOURCE_FILES, ...TZ_REGION_FILES
   .add('leap-seconds.list').add('version').add('ziguard.awk');
 const NTP_BASE = -2_208_988_800;
 const FAKE_USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.2 Safari/605.1.15';
-export const DELTA_T_URL = 'https://datacenter.iers.org/data/latestVersion/finals.data.iau2000.txt';
+export const DELTA_T_URL = 'https://maia.usno.navy.mil/ser7/finals.all';
 export const LEAP_SECOND_URL = 'https://hpiers.obspm.fr/iers/bul/bulc/ntp/leap-seconds.list';
 const TIME_AND_DELTA = /^(\d{10,})\s+(\d{2,4})\s*#\s*1\s+[A-Za-z]{3}\s+\d{4}/;
 
