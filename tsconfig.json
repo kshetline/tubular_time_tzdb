@@ -21,7 +21,7 @@
       "dom"
     ]
   },
-  "include": ["./src/**/*"],
+  "include": ["./ambient.d.ts", "./src/**/*"],
   "exclude": [
     "**/*.spec.ts",
     "dist",

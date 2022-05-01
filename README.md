@@ -349,7 +349,7 @@ The only current metadata keys are `deltaTs`, `leapSeconds`, `version`, and `yea
 • `version`: The tz database release version.<br>
 • `years`: The range of years covered by explicit UTC offset transition times.<br>
 • `deltaTs`: Starting at the year 2020, with one entry per year, the value of “delta T” at the start of each year. Delta T is the difference between UT1 and TDT (Terrestrial Dynamic Time), also the same as the difference between UT1 and TAI (International Atomic Time) plus 32.184 seconds.<br>
-• `leapSeconds`: This is a list of days, specified as a number of days after January 1, 1970, for which a leap seconds has been added in the second just before the start of the specified day. If a number is negative, the absolute value of that number is the number of days after January 1, 1970 when a negative leap second has just occurred.<br>
+• `leapSeconds`: This is a list of days, specified as a number of days after January 1, 1970, for which a leap seconds has been added in the second just before the start of the specified day. If a number is negative, the absolute value of that number is the number of days after January 1, 1970, when a negative leap second has just occurred.<br>
 
 ### Timezone descriptions
 
