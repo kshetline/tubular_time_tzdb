@@ -98,6 +98,7 @@ export const populationAndCountryData = {
   'America/Cayman': '15e5;KY PA',
   'America/Chicago': '92e5;US',
   'America/Chihuahua': '81e4;MX',
+  'America/Ciudad_Juarez': '23e3;MX',
   'America/Coral_Harbour': '28e2;CA',
   'America/Cordoba': ';AR',
   'America/Costa_Rica': '12e5;CR',
