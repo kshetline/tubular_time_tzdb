@@ -1,6 +1,6 @@
 {
   "name": "@tubular/time-tzdb",
-  "version": "1.2.2",
+  "version": "1.2.5",
   "description": "Reads, parses, and compacts IANA timezones",
   "main": "dist/index.js",
   "bin": {
@@ -17,12 +17,12 @@
   "license": "MIT",
   "dependencies": {
     "@tubular/math": "^3.1.0",
-    "@tubular/time": "^3.8.2",
-    "@tubular/util": "^4.9.2",
-    "by-request": "^1.3.3",
-    "commander": "^9.2.0",
+    "@tubular/time": "^3.9.2",
+    "@tubular/util": "^4.16.1",
+    "by-request": "^1.3.4",
+    "commander": "^9.5.0",
     "rimraf": "^3.0.2",
-    "tar-stream": "^2.2.0"
+    "tar-stream": "^3.1.7"
   },
   "devDependencies": {
     "@babel/core": "^7.17.10",
