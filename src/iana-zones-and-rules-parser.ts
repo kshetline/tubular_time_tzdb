@@ -284,7 +284,7 @@ export class IanaZonesAndRulesParser {
   }
 
   private readLine(lines: string[]): string {
-    let line;
+    let line: string;
 
     do {
       do {
