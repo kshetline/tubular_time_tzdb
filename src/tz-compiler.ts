@@ -27,7 +27,9 @@ export class TzCompiler {
   constructor(private parser: IanaZonesAndRulesParser) {}
 
   async compileAll(minYear?: number, maxYear?: number, progress?: TzCallback): Promise<Map<string, TzTransitionList>>;
-  async compileAll(minYear, maxYear, progress?: TzCallback): Promise<Map<string, TzTransitionList>>;
+  // noinspection JSUnusedGlobalSymbols
+  async compileAll(minYear: number, maxYear: number, progress?: TzCallback): Promise<Map<string, TzTransitionList>>;
+  // noinspection JSUnusedGlobalSymbols
   async compileAll(minYear?: number, maxYear?: number, strictDuplicateRemoval?: boolean,
     progress?: TzCallback): Promise<Map<string, TzTransitionList>>;
 

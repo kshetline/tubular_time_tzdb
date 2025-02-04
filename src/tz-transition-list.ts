@@ -34,6 +34,7 @@ export class TzTransitionList extends Array<TzTransition> {
     return theClone;
   }
 
+  // noinspection JSUnusedGlobalSymbols
   getLastZoneRec(): IanaZoneRecord {
     return this.lastZoneRec;
   }
@@ -112,6 +113,7 @@ export class TzTransitionList extends Array<TzTransition> {
     }
   }
 
+  // noinspection JSUnusedGlobalSymbols
   eliminateNegativeDst(): void {
     let lastWasNegative = false;
     let lastNegativeOffset = 0;

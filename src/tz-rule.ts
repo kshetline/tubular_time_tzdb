@@ -185,7 +185,7 @@ export class TzRule {
     return s;
   }
 
-  getTransitions(maxYear: number, zpc: ZoneProcessingContext, lastDst): TzTransitionList {
+  getTransitions(maxYear: number, zpc: ZoneProcessingContext, lastDst: number): TzTransitionList {
     const newTransitions = new TzTransitionList();
     const minTime = zpc.lastUntil;
     const zoneOffset = zpc.utcOffset;
