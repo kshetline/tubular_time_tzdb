@@ -84,7 +84,8 @@ export class IanaZoneRecord {
 }
 
 export class IanaZone extends Array<IanaZoneRecord> {
-  constructor(public zoneId: string) {
+  // noinspection JSUnusedGlobalSymbols
+  constructor(public _zoneId: string) {
     super();
   }
 }

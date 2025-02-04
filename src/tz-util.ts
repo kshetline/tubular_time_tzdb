@@ -105,6 +105,7 @@ export function toBase60(x: number, precision = 1): string {
   return result;
 }
 
+// noinspection JSUnusedGlobalSymbols
 export function fromBase60(x: string): number {
   let sign = 1;
   let result = 0;

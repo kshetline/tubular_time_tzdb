@@ -395,7 +395,7 @@ These numbers can be negative, and they can also be fractional with the use of a
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The first index indicates the initial state of the timezone.
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The second index corresponds to the first listed &lt;transition_delta>.
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The third index corresponds to the second listed &lt;transition_delta>, etc.</i>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The third index corresponds to the second listed &lt;transition_delta>, etc.
 
 &lt;transition_delta> = <i>The first &lt;transition_delta> is a delta from 0, making it an
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;absolute time value (in seconds from the 1970-01-01 UTC epoch) when the first
