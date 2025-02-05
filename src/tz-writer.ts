@@ -51,7 +51,7 @@ export interface TzOutputOptions extends TzOptions {
 const skippedZones = /America\/Indianapolis|America\/Knox_IN|Asia\/Riyadh\d\d/;
 const extendedRegions = /(America\/Argentina|America\/Indiana)\/(.+)/;
 const skippedRegions = /Etc|GB|GB-Eire|GMT0|NZ|NZ-CHAT|SystemV|W-SU|Zulu|Mideast|[A-Z]{3}(\d[A-Z]{3})?/;
-const miscUnique = /CST6CDT|EET|EST5EDT|MST7MDT|PST8PDT|SystemV\/AST4ADT|SystemV\/CST6CDT|SystemV\/EST5EDT|SystemV\/MST7MDT|SystemV\/PST8PDT|SystemV\/YST9YDT|WET/;
+const miscUnique = /CST6CDT|EET|EST5EDT|MST7MDT|PST8PDT|SystemV\/(AST4ADT|CST6CDT|EST5EDT|MST7MDT|PST8PDT|YST9YDT)|WET/;
 
 export async function getTzData(options: TzOptions = {}, asString = false): Promise<any> {
   const stream = new Writable();
@@ -391,6 +391,9 @@ function shouldFilter(zoneId: string, options: TzOutputOptions, singleZone: stri
     region = (pos < 0 ? zoneId : zoneId.substr(0, pos));
     locale = (pos < 0 ? null : zoneId.substr(pos + 1));
   }
+
+  if (options.systemV && region === 'SystemV')
+    region = 'xxx';
 
   return (options.filtered && (locale == null || skippedRegions.test(region)) && !miscUnique.test(zoneId));
 }

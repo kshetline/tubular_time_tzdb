@@ -22,6 +22,7 @@ describe('TzCompiler', () => {
     expect(zones.size).to.equal(count);
 
     for (const [zoneId, zone] of zones) {
+      // Note: These tests can fail if the @tubular/time package is not up-to-date with what's being tested.
       const tZone = Timezone.from(zoneId);
       const tTransitions: Transition[] = (tZone as any).transitions ?? [];
 
