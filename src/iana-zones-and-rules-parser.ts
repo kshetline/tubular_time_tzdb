@@ -119,27 +119,35 @@ export class IanaZonesAndRulesParser {
     else if (tzData.sources.systemv)
       // Uncomment the commented-out rules and timezones in the systemv file
       tzData.sources.systemv = tzData.sources.systemv.replace(/## (Rule\s+SystemV|Zone)/g, '$1');
+    else
+      tzData.sources.systemv = `
+Rule\tSystemV\tmin\t1973\t-\tApr\tlastSun\t2:00\t1:00\tD
+Rule\tSystemV\tmin\t1973\t-\tOct\tlastSun\t2:00\t0\tS
+Rule\tSystemV\t1974\tonly\t-\tJan\t6\t2:00\t1:00\tD
+Rule\tSystemV\t1974\tonly\t-\tNov\tlastSun\t2:00\t0\tS
+Rule\tSystemV\t1975\tonly\t-\tFeb\t23\t2:00\t1:00\tD
+Rule\tSystemV\t1975\tonly\t-\tOct\tlastSun\t2:00\t0\tS
+Rule\tSystemV\t1976\tmax\t-\tApr\tlastSun\t2:00\t1:00\tD
+Rule\tSystemV\t1976\tmax\t-\tOct\tlastSun\t2:00\t0\tS
+
+Zone\tSystemV/AST4ADT\t-4:00\tSystemV\t\tA%sT
+Zone\tSystemV/EST5EDT\t-5:00\tSystemV\t\tE%sT
+Zone\tSystemV/CST6CDT\t-6:00\tSystemV\t\tC%sT
+Zone\tSystemV/MST7MDT\t-7:00\tSystemV\t\tM%sT
+Zone\tSystemV/PST8PDT\t-8:00\tSystemV\t\tP%sT
+Zone\tSystemV/YST9YDT\t-9:00\tSystemV\t\tY%sT
+Zone\tSystemV/AST4\t-4:00\t-\t\tAST
+Zone\tSystemV/EST5\t-5:00\t-\t\tEST
+Zone\tSystemV/CST6\t-6:00\t-\t\tCST
+Zone\tSystemV/MST7\t-7:00\t-\t\tMST
+Zone\tSystemV/PST8\t-8:00\t-\t\tPST
+Zone\tSystemV/YST9\t-9:00\t-\t\tYST
+Zone\tSystemV/HST10\t-10:00\t-\t\tHST
+`;
 
     this.deltaTs = tzData.deltaTs;
     this.leapSeconds = tzData.leapSeconds;
     this.parseSources(tzData);
-
-    // Add aliases if needed for legacy time zones. Not all substitutes exactly duplicate their originals.
-    if (this.systemV && !tzData.sources.systemv) {
-      this.addAlias('SystemV/AST4', 'America/Anguilla');
-      this.addAlias('SystemV/AST4ADT', 'America/Goose_Bay');
-      this.addAlias('SystemV/CST6', 'America/Belize');
-      this.addAlias('SystemV/CST6CDT', 'America/Chicago');
-      this.addAlias('SystemV/EST5', 'America/Atikokan');
-      this.addAlias('SystemV/EST5EDT', 'America/New_York');
-      this.addAlias('SystemV/HST10', 'HST');
-      this.addAlias('SystemV/MST7', 'America/Creston');
-      this.addAlias('SystemV/MST7MDT', 'America/Boise');
-      this.addAlias('SystemV/PST8', 'Etc/GMT+8');
-      this.addAlias('SystemV/PST8PDT', 'America/Los_Angeles');
-      this.addAlias('SystemV/YST9', 'Etc/GMT+8');
-      this.addAlias('SystemV/YST9YDT', 'America/Anchorage');
-    }
 
     if (!tzData.sources.pacificnew)
       this.addAlias('US/Pacific-New', 'America/Los_Angeles');
