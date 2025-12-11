@@ -247,7 +247,7 @@ export async function writeTimezones(options: TzOutputOptions = {}): Promise<voi
   if (options.format === TzFormat.JSON)
     write('{');
   else if (options.format === TzFormat.JAVASCRIPT || options.format === TzFormat.TYPESCRIPT) {
-    write('/* eslint-disable quote-props */');
+    write('/* eslint-disable @stylistic/quote-props */');
     write('/* cspell:disable */ // noinspection SpellCheckingInspection');
     write(`const ${variableName} = ${trimMarkers ? '/* trim-file-start */' : ''}{ // ${comment}`);
   }
